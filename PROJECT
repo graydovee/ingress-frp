@@ -1,0 +1,6 @@
+domain: graydove.cn
+layout:
+- go.kubebuilder.io/v4-alpha
+projectName: frp-ingress-controller
+repo: github.com/grydovee/frp-ingress-controller
+version: "3"
