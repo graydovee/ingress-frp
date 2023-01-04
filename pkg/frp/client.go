@@ -6,22 +6,27 @@ import (
 	"net/http"
 )
 
-type Client struct {
+type Client interface {
+	GetConfig() ([]byte, error)
+	SetConfig(config *Config) error
+}
+
+func NewClient(addr string, port uint16, uname, passwd string) Client {
+	client := &http.Client{}
+	return &frpClient{
+		cli:  client,
+		addr: fmt.Sprintf("%s:%d", addr, port),
+		auth: NewBasicAuth(uname, passwd),
+	}
+}
+
+type frpClient struct {
 	cli  *http.Client
 	addr string
 	auth Auth
 }
 
-func NewClient() *Client {
-	client := &http.Client{}
-	return &Client{
-		cli:  client,
-		addr: "127.0.0.1:7400",
-		auth: NewBasicAuth("admin", "admin"),
-	}
-}
-
-func (c *Client) GetConfig() ([]byte, error) {
+func (c *frpClient) GetConfig() ([]byte, error) {
 	request, err := c.buildRequest(ApiGetConfig)
 	if err != nil {
 		return nil, err
@@ -40,10 +45,11 @@ func (c *Client) GetConfig() ([]byte, error) {
 	return body, nil
 }
 
-func (c *Client) SetConfig() {
+func (c *frpClient) SetConfig(config *Config) error {
+	return nil
 }
 
-func (c *Client) buildRequest(api API) (*http.Request, error) {
+func (c *frpClient) buildRequest(api API) (*http.Request, error) {
 	request, err := http.NewRequest(api.Method(), c.buildPath(api.URI()), nil)
 	if err != nil {
 		return nil, err
@@ -54,6 +60,6 @@ func (c *Client) buildRequest(api API) (*http.Request, error) {
 	return request, nil
 }
 
-func (c *Client) buildPath(api string) string {
+func (c *frpClient) buildPath(api string) string {
 	return fmt.Sprintf("http://%s%s", c.addr, api)
 }
