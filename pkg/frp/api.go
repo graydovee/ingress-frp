@@ -27,4 +27,6 @@ func (a *api) URI() string {
 
 var (
 	ApiGetConfig API = &api{uri: "/api/config", method: http.MethodGet}
+	ApiPutConfig API = &api{uri: "/api/config", method: http.MethodPut}
+	ApiReload    API = &api{uri: "/api/reload", method: http.MethodGet}
 )

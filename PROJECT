@@ -1,6 +1,6 @@
 domain: graydove.cn
 layout:
 - go.kubebuilder.io/v4-alpha
-projectName: frp-ingress-controller
-repo: github.com/grydovee/frp-ingress-controller
+projectName: ingress-frp
+repo: github.com/grydovee/ingress-frp
 version: "3"

@@ -29,14 +29,14 @@ local_port=8080
 `
 
 type fakeClient struct {
-	cfg *Config
+	cfg *Configs
 }
 
 func NewFakeClient() Client {
 	return &fakeClient{}
 }
 
-func (f *fakeClient) GetConfig() ([]byte, error) {
+func (f *fakeClient) GetConfigs() (*Configs, error) {
 	if f.cfg == nil {
 		cfg, err := Unmarshal([]byte(defaultConfig))
 		if err != nil {
@@ -44,10 +44,15 @@ func (f *fakeClient) GetConfig() ([]byte, error) {
 		}
 		f.cfg = cfg
 	}
-	return Marshal(f.cfg), nil
+	bytes := Marshal(f.cfg)
+	return Unmarshal(bytes)
 }
 
-func (f *fakeClient) SetConfig(config *Config) error {
+func (f *fakeClient) SetConfig(config *Configs) error {
 	f.cfg = config
+	return nil
+}
+
+func (f *fakeClient) Reload() error {
 	return nil
 }
