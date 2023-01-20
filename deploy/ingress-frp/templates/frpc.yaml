@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ingress-frpc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ingress-frpc
+    {{- include "ingress-frp.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: ingress-frpc
+      {{- include "ingress-frp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: ingress-frpc
+        {{- include "ingress-frp.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: ingress-frpc
+        image: snowdreamtech/frpc
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - "cp /etc/configmap/frpc.ini /etc/frp/frpc.ini && /usr/bin/frpc -c /etc/frp/frpc.ini"
+        volumeMounts:
+        - name: frpc-config
+          mountPath: /etc/configmap
+      volumes:
+      - name: frpc-config
+        configMap:
+          name: ingress-frpc-config
+          items:
+          - key: frpc.ini
+            path: frpc.ini
+      nodeSelector:
+        {{- toYaml .Values.frp.frpc.nodeSelector | nindent 8 }}

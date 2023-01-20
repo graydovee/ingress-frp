@@ -1,14 +1,19 @@
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
-  name: manager-role
+  name: ingress-frp-manager-role
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ingress-frp.labels" . | nindent 4 }}
 rules:
-- resources:
+- apiGroups:
+  - ""
+  resources:
   - services
   verbs:
   - get
+  - list
+  - watch
 - apiGroups:
   - networking.k8s.io
   resources:

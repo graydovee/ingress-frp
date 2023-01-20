@@ -85,7 +85,7 @@ func TestFrpIngressReconciler_Reconcile(t *testing.T) {
 		Client:    cli,
 		Scheme:    scheme,
 		Clock:     clock.RealClock{},
-		frpClient: frpCli,
+		FrpClient: frpCli,
 	}
 	tests := []struct {
 		req     controllerruntime.Request

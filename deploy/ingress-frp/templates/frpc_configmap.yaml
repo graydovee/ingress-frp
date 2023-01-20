@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-frpc-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ingress-frp.labels" . | nindent 4 }}
+data:
+  frpc.ini: |
+    [common]
+    admin_addr=0.0.0.0
+    admin_port={{ .Values.frp.frpc.port }}
+    admin_user={{ .Values.frp.frpc.username }}
+    admin_pwd={{ .Values.frp.frpc.password }}
+    server_addr={{ .Values.frp.frps.addr }}
+    server_port={{ .Values.frp.frps.port }}
+    {{- if .Values.frp.frpc.token }}
+    token={{ .Values.frp.frpc.token }}
+    {{- end }}

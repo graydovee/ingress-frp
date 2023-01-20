@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/clock"
+	"net"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,12 +25,12 @@ type FrpIngressReconciler struct {
 	Scheme *runtime.Scheme
 	clock.Clock
 
-	frpClient frp.Client
+	FrpClient frp.Client
 }
 
-//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingress,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingress/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=,resources=service,verbs=get
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=,resources=services,verbs=get
 
 func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
@@ -62,13 +63,14 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 			switch svc.Spec.Type {
 			case corev1.ServiceTypeClusterIP:
-				if len(svc.Spec.ClusterIP) == 0 {
-					l.Info("clusterIp not found", "key", key)
+				localIp, err := toLocalIp(&svc)
+				if err != nil {
+					l.Info("can not get service ip", "key", key, "err", err)
 					continue
 				}
 				cfg := &frp.HttpConfig{}
 				cfg.Host = rule.Host
-				cfg.LocalIp = svc.Spec.ClusterIP
+				cfg.LocalIp = localIp
 				cfg.LocalPort = strconv.Itoa(int(path.Backend.Service.Port.Number))
 				cfg.Locations = path.Path
 				name := fmt.Sprintf("%s/%s/%s", ingress.Namespace, ingress.Name, svc.Name)
@@ -80,7 +82,8 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-	configs, err := r.frpClient.GetConfigs()
+	l.Info("update frp config", "cfgs", cfgs)
+	configs, err := r.FrpClient.GetConfigs()
 	if err != nil {
 		return ctrl.Result{Requeue: true}, err
 	}
@@ -93,23 +96,52 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		configs.Proxy[name] = config
 	}
 
-	if err = r.frpClient.SetConfig(configs); err != nil {
+	if err = r.FrpClient.SetConfig(configs); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err := r.frpClient.Reload(); err != nil {
+	if err := r.FrpClient.Reload(); err != nil {
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
 }
+
+func toLocalIp(service *corev1.Service) (string, error) {
+	if service == nil {
+		return "", fmt.Errorf("service is nil")
+	}
+	clusterIp := service.Spec.ClusterIP
+	ip := net.ParseIP(clusterIp)
+	if ip != nil {
+		return ip.String(), nil
+	}
+
+	domain := fmt.Sprintf("%s.%s.svc.cluster.local", service.Name, service.Namespace)
+	lookupIPs, err := net.LookupIP(domain)
+	if err != nil {
+		return "", err
+	}
+	for _, p := range lookupIPs {
+		if p.To4() != nil {
+			return p.String(), nil
+		}
+	}
+	for _, p := range lookupIPs {
+		if p.To16() != nil {
+			return p.String(), nil
+		}
+	}
+	return "", fmt.Errorf("no address found for %s", domain)
+}
+
 func (r *FrpIngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// set up a real clock, since we're not in a test
 	if r.Clock == nil {
 		r.Clock = clock.RealClock{}
 	}
 
-	if r.frpClient == nil {
-		r.frpClient = frp.NewFakeClient()
+	if r.FrpClient == nil {
+		r.FrpClient = frp.NewFakeClient()
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
