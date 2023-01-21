@@ -6,12 +6,12 @@ manager:
   extraArgs: []
 
 frp:
+  token:
   frpc:
     addr:
     port: 7400
     username: admin
     password: admin
-    token:
     nodeSelector: {}
   frps:
     addr: 8.8.8.8

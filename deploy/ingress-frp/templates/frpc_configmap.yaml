@@ -14,6 +14,6 @@ data:
     admin_pwd={{ .Values.frp.frpc.password }}
     server_addr={{ .Values.frp.frps.addr }}
     server_port={{ .Values.frp.frps.port }}
-    {{- if .Values.frp.frpc.token }}
-    token={{ .Values.frp.frpc.token }}
+    {{- if .Values.frp.token }}
+    token={{ .Values.frp.token }}
     {{- end }}

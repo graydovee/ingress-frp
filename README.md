@@ -1,94 +1,101 @@
 # ingress-frp
-// TODO(user): Add simple overview of use/purpose
+
+[![GitHub license](https://img.shields.io/github/license/kubernetes/ingress-nginx.svg)](https://github.com/graydovee/ingress-frp/blob/main/LICENSE)
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+
+Ingress-Frp is a Ingress controller for Kubernetes. It use [Frp](https://github.com/fatedier/frp) to help you to visit your private network's Kubernetes services from the Internet.
 
 ## Getting Started
-You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
-**Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
-### Running on the cluster
-1. Install Instances of Custom Resources:
+### Install
+
+#### install with helm
 
 ```sh
-kubectl apply -f config/samples/
+helm upgrade ingress-frp ./deploy/ingress-frp -n kube-system \
+--set frp.token=<SAME_TO_YOUER_SERVER_TOKEN> \
+--set frp.frpc.nodeSelector."ingress\.graydove\.cn/frp"=frpc \ 
+--set frp.frps.addr=<YOUR_FRP_SERVER_ADDRESS> \
+--set frp.frps.port=<YOUR_FRP_SERVER_PORT> \
+--set manager.image.tag=v0.0.2
 ```
 
-2. Build and push your image to the location specified by `IMG`:
-	
+#### install with Kustomize
+
+1. Build and push your image to the location specified by `IMG`:
+
 ```sh
 make docker-build docker-push IMG=<some-registry>/ingress-frp:tag
 ```
-	
-3. Deploy the controller to the cluster with the image specified by `IMG`:
+
+2. Deploy the controller to the cluster with the image specified by `IMG`:
 
 ```sh
 make deploy IMG=<some-registry>/ingress-frp:tag
 ```
 
-### Uninstall CRDs
-To delete the CRDs from the cluster:
-
-```sh
-make uninstall
-```
-
-### Undeploy controller
-UnDeploy the controller to the cluster:
+##### UnDeploy the controller to the cluster:
 
 ```sh
 make undeploy
 ```
 
+## How to use
+
+Should set ingress.spec.ingressClassName=frp to enable fro ingress
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myproject-ingress
+  namespace: default
+spec:
+  ingressClassName: frp
+  tls:
+  - hosts:
+    - myproject.example.com
+    secretName: myproject-tls
+  rules:
+  - host: myproject.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: myproject
+            port:
+              number: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myproject
+  namespace: default
+spec:
+  selector:
+    app.kubernetes.io/name: myproject
+  type: ClusterIP
+  clusterIP: 127.0.0.1
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
+    name: http
+```
+
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+
+Welcome to contribute
 
 ### How it works
+
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 
-It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/) 
-which provides a reconcile function responsible for synchronizing resources untile the desired state is reached on the cluster 
+It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/) and  [Frp](https://github.com/fatedier/frp)
+which provides a reconcile function responsible for synchronizing resources untile the desired state is reached on the cluster
 
-### Test It Out
-1. Install the CRDs into the cluster:
-
-```sh
-make install
-```
-
-2. Run your controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
-
-```sh
-make run
-```
-
-**NOTE:** You can also run this in one step by running: `make install run`
-
-### Modifying the API definitions
-If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
-
-```sh
-make manifests
-```
-
-**NOTE:** Run `make --help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
-
-## License
-
-Copyright 2023.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+https://book.kubebuilder.io/introduction.html)
 
