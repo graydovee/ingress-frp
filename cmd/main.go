@@ -94,11 +94,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	fc := frp.NewClient(frpAddr, uint16(frpPort), uname, passwd)
+	fs := frp.NewSyncer(frp.NewClient(frpAddr, uint16(frpPort), uname, passwd))
+	if err := mgr.Add(fs); err != nil {
+		return
+	}
 	if err = (&controllers.FrpIngressReconciler{
 		Client:    mgr.GetClient(),
 		Scheme:    mgr.GetScheme(),
-		FrpClient: fc,
+		FrpSyncer: fs,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "")
 		os.Exit(1)

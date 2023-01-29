@@ -2,15 +2,17 @@ package frp
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 )
 
 type Client interface {
-	GetConfigs() (*Configs, error)
-	SetConfig(config *Configs) error
-	Reload() error
+	Info() string
+	GetConfigs(ctx context.Context) (*Configs, error)
+	SetConfig(ctx context.Context, config *Configs) error
+	Reload(ctx context.Context) error
 }
 
 func NewClient(addr string, port uint16, uname, passwd string) Client {
@@ -28,8 +30,13 @@ type frpClient struct {
 	auth Auth
 }
 
-func (c *frpClient) Reload() error {
+func (c *frpClient) Info() string {
+	return c.addr
+}
+
+func (c *frpClient) Reload(ctx context.Context) error {
 	request, err := http.NewRequest(ApiReload.Method(), c.buildPath(ApiReload.URI()), nil)
+	request.WithContext(ctx)
 	if err != nil {
 		return err
 	}
@@ -52,8 +59,9 @@ func (c *frpClient) Reload() error {
 	return nil
 }
 
-func (c *frpClient) GetConfigs() (*Configs, error) {
+func (c *frpClient) GetConfigs(ctx context.Context) (*Configs, error) {
 	request, err := http.NewRequest(ApiGetConfig.Method(), c.buildPath(ApiGetConfig.URI()), nil)
+	request.WithContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -87,9 +95,10 @@ func (c *frpClient) GetConfigs() (*Configs, error) {
 	return cfg, nil
 }
 
-func (c *frpClient) SetConfig(config *Configs) error {
+func (c *frpClient) SetConfig(ctx context.Context, config *Configs) error {
 	data := Marshal(config)
 	request, err := http.NewRequest(ApiPutConfig.Method(), c.buildPath(ApiPutConfig.URI()), io.NopCloser(bytes.NewReader(data)))
+	request.WithContext(ctx)
 	if err != nil {
 		return err
 	}
@@ -114,17 +123,6 @@ func (c *frpClient) SetConfig(config *Configs) error {
 		}
 	}
 	return nil
-}
-
-func (c *frpClient) buildRequest(api API) (*http.Request, error) {
-	request, err := http.NewRequest(api.Method(), c.buildPath(api.URI()), nil)
-	if err != nil {
-		return nil, err
-	}
-	if c.auth != nil {
-		c.auth.SetAuth(request)
-	}
-	return request, nil
 }
 
 func (c *frpClient) buildPath(api string) string {
