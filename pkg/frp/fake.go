@@ -1,5 +1,10 @@
 package frp
 
+import (
+	"context"
+	"net"
+)
+
 const defaultConfig = `
 [common]
 admin_port=7400
@@ -36,7 +41,7 @@ func NewFakeClient() Client {
 	return &fakeClient{}
 }
 
-func (f *fakeClient) GetConfigs() (*Configs, error) {
+func (f *fakeClient) GetConfigs(ctx context.Context) (*Configs, error) {
 	if f.cfg == nil {
 		cfg, err := Unmarshal([]byte(defaultConfig))
 		if err != nil {
@@ -48,11 +53,25 @@ func (f *fakeClient) GetConfigs() (*Configs, error) {
 	return Unmarshal(bytes)
 }
 
-func (f *fakeClient) SetConfig(config *Configs) error {
+func (f *fakeClient) SetConfig(ctx context.Context, config *Configs) error {
 	f.cfg = config
 	return nil
 }
 
-func (f *fakeClient) Reload() error {
+func (f *fakeClient) Reload(ctx context.Context) error {
 	return nil
+}
+
+func (f *fakeClient) Addr() *net.TCPAddr {
+	return &net.TCPAddr{
+		IP:   net.IPv4(127, 0, 0, 1),
+		Port: 7000,
+	}
+}
+func NewFakeSyncer() Syncer {
+	return &syncer{
+		clients: map[string]Client{
+			"127.0.0.1": NewFakeClient(),
+		},
+	}
 }

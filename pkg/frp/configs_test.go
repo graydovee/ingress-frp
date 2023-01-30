@@ -1,13 +1,14 @@
 package frp
 
 import (
+	"context"
 	"fmt"
 	"testing"
 )
 
 func TestConfig(t *testing.T) {
 	client := NewFakeClient()
-	cfg, err := client.GetConfigs()
+	cfg, err := client.GetConfigs(context.Background())
 	if err != nil {
 		t.Error(err)
 		return

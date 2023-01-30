@@ -1,7 +1,8 @@
 
 # Image URL to use all building/pushing image targets
-TAG ?= v0.0.2
-IMG ?= graydovee/ingress-frp:${TAG}
+TAG ?= v0.0.3
+REPO ?= graydovee/ingress-frp
+IMG ?= ${REPO}:${TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.25.0
 
@@ -63,11 +64,11 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager main.go
+	go build -o bin/manager cmd/main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./main.go
+	go run ./cmd/main.go
 
 # If you wish built the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
@@ -79,6 +80,11 @@ docker-build:  ## Build docker image with the manager.
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
+
+.PHONY: docker-release
+docker-release: ## Push docker image with the manager.
+	docker tag ${IMG} ${REPO}:latest
+	docker push ${REPO}:latest
 
 # PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:

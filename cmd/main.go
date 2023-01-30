@@ -55,10 +55,10 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	var frpAddr, uname, passwd string
-	var frpPort int
-	flag.StringVar(&frpAddr, "frp-addr", "127.0.0.1", "The web address of frp client.")
-	flag.IntVar(&frpPort, "frp-port", 7400, "The web port of frp client.")
+	var frpcAddr, uname, passwd string
+	var frpcPort int
+	flag.StringVar(&frpcAddr, "frp-addr", "127.0.0.1", "The web address of frp client.")
+	flag.IntVar(&frpcPort, "frp-port", 7400, "The web port of frp client.")
 	flag.StringVar(&uname, "frp-uname", "admin", "The username of frp client")
 	flag.StringVar(&passwd, "frp-passwd", "admin", "The password of frp client")
 
@@ -94,11 +94,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	fc := frp.NewClient(frpAddr, uint16(frpPort), uname, passwd)
+	fs := frp.NewSyncer(frpcAddr, uint16(frpcPort), uname, passwd)
+	if err := mgr.Add(fs); err != nil {
+		return
+	}
 	if err = (&controllers.FrpIngressReconciler{
 		Client:    mgr.GetClient(),
 		Scheme:    mgr.GetScheme(),
-		FrpClient: fc,
+		FrpSyncer: fs,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "")
 		os.Exit(1)
