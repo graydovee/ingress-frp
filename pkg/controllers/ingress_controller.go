@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"github.com/grydovee/ingress-frp/pkg/frp"
 	corev1 "k8s.io/api/core/v1"
@@ -24,7 +25,7 @@ type FrpIngressReconciler struct {
 	Scheme *runtime.Scheme
 	clock.Clock
 
-	FrpSyncer *frp.Syncer
+	FrpSyncer frp.Syncer
 }
 
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
@@ -69,6 +70,10 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				cfg.Locations = path.Path
 				name := fmt.Sprintf("%s/%s/%s", ingress.Namespace, ingress.Name, svc.Name)
 
+				bytes := sha256.Sum256([]byte(name))
+				cfg.Group = fmt.Sprintf("%x", bytes[:8])
+				cfg.GroupKey = fmt.Sprintf("%x", bytes[:])
+
 				cfgs[name] = cfg
 			default:
 				l.Info("unsupported service type", "key", key)
@@ -88,7 +93,7 @@ func (r *FrpIngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	if r.FrpSyncer == nil {
-		r.FrpSyncer = frp.NewSyncer(frp.NewFakeClient())
+		r.FrpSyncer = frp.NewFakeSyncer()
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).

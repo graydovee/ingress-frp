@@ -80,7 +80,7 @@ func TestFrpIngressReconciler_Reconcile(t *testing.T) {
 		Build()
 
 	//frpCli := frp.NewClient("127.0.0.1", 7400, "admin", "admin")
-	frpCli := frp.NewFakeClient()
+	frpCli := frp.NewFakeSyncer()
 	reconciler := &FrpIngressReconciler{
 		Client:    cli,
 		Scheme:    scheme,

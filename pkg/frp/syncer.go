@@ -2,34 +2,63 @@ package frp
 
 import (
 	"context"
+	"fmt"
+	"github.com/grydovee/ingress-frp/pkg/constants"
+	"github.com/grydovee/ingress-frp/pkg/utils"
+	"net"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sync"
 	"time"
 )
 
-const syncInterval = time.Minute
+type Syncer interface {
+	Start(ctx context.Context) error
+	SetConfig(configs *Configs)
+	SetProxies(configs map[string]Config)
+	Sync()
+}
 
-type Syncer struct {
+type syncer struct {
 	ctx context.Context
 
-	clients []Client
+	domainWatcher *utils.DomainWatcher
+	clients       map[string]Client
 
 	configs *Configs
 	ch      chan struct{}
 	mu      sync.Mutex
 }
 
-func NewSyncer(clients ...Client) *Syncer {
-	return &Syncer{
-		ch:      make(chan struct{}),
-		clients: clients,
+func NewSyncer(addr string, port uint16, uname string, passwd string) Syncer {
+	s := &syncer{
+		domainWatcher: utils.NewDomainWatcher(addr),
+		ch:            make(chan struct{}),
 	}
+	s.domainWatcher.OnClientChange = func(ips []net.IP) {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+
+		newClients := make(map[string]Client)
+		for _, ip := range ips {
+			if _, ok := s.clients[ip.String()]; ok {
+				newClients[ip.String()] = s.clients[ip.String()]
+			} else {
+				newClients[ip.String()] = NewClient(ip, port, uname, passwd)
+			}
+		}
+		s.clients = newClients
+		s.Sync()
+	}
+	return s
 }
 
-func (s *Syncer) Start(ctx context.Context) error {
+func (s *syncer) Start(ctx context.Context) error {
+	if s.domainWatcher != nil {
+		go s.domainWatcher.Start(ctx)
+	}
 	s.ctx = ctx
-	ticker := time.NewTicker(syncInterval)
+	ticker := time.NewTicker(constants.FrpClientSyncInterval)
 	defer ticker.Stop()
 	for {
 		select {
@@ -46,7 +75,7 @@ func (s *Syncer) Start(ctx context.Context) error {
 	}
 }
 
-func (s *Syncer) SetConfig(configs *Configs) {
+func (s *syncer) SetConfig(configs *Configs) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.configs = configs
@@ -54,15 +83,18 @@ func (s *Syncer) SetConfig(configs *Configs) {
 	s.Sync()
 }
 
-func (s *Syncer) SetProxies(configs map[string]Config) {
+func (s *syncer) SetProxies(configs map[string]Config) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.configs == nil {
+		s.configs = &Configs{}
+	}
 	s.configs.Proxy = configs
 
 	s.Sync()
 }
 
-func (s *Syncer) Sync() {
+func (s *syncer) Sync() {
 	select {
 	case <-s.ctx.Done():
 		return
@@ -72,29 +104,33 @@ func (s *Syncer) Sync() {
 	}
 }
 
-func (s *Syncer) sync(ctx context.Context) {
+func (s *syncer) sync(ctx context.Context) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	l := log.FromContext(ctx)
 	for _, cli := range s.clients {
 		configs, err := cli.GetConfigs(ctx)
 		if err != nil {
-			l.Error(err, "get config error", "client", cli.Info())
+			l.Error(err, "get config error", "client", cli.Addr())
 			continue
 		}
 		if reflect.DeepEqual(configs, s.configs) {
 			continue
 		}
-		l.Info("sync config", "client", cli.Info())
+		l.Info("sync config", "client", cli.Addr())
 
-		configs.Proxy = s.configs.Proxy
+		newProxy := make(map[string]Config)
+		for name, config := range s.configs.Proxy {
+			newProxy[fmt.Sprintf("%s/%s", cli.Addr(), name)] = config
+		}
+		configs.Proxy = newProxy
 		if err = cli.SetConfig(ctx, configs); err != nil {
-			l.Error(err, "set config error", "client", cli.Info())
+			l.Error(err, "set config error", "client", cli.Addr())
 			continue
 		}
 
 		if err := cli.Reload(ctx); err != nil {
-			l.Error(err, "reload config error", "client", cli.Info())
+			l.Error(err, "reload config error", "client", cli.Addr())
 			continue
 		}
 	}

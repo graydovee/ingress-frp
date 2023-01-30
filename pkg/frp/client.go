@@ -5,32 +5,33 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 )
 
 type Client interface {
-	Info() string
+	Addr() *net.TCPAddr
 	GetConfigs(ctx context.Context) (*Configs, error)
 	SetConfig(ctx context.Context, config *Configs) error
 	Reload(ctx context.Context) error
 }
 
-func NewClient(addr string, port uint16, uname, passwd string) Client {
+func NewClient(addr net.IP, port uint16, uname, passwd string) Client {
 	client := &http.Client{}
 	return &frpClient{
 		cli:  client,
-		addr: fmt.Sprintf("%s:%d", addr, port),
+		addr: &net.TCPAddr{IP: addr, Port: int(port)},
 		auth: NewBasicAuth(uname, passwd),
 	}
 }
 
 type frpClient struct {
 	cli  *http.Client
-	addr string
+	addr *net.TCPAddr
 	auth Auth
 }
 
-func (c *frpClient) Info() string {
+func (c *frpClient) Addr() *net.TCPAddr {
 	return c.addr
 }
 
@@ -126,5 +127,5 @@ func (c *frpClient) SetConfig(ctx context.Context, config *Configs) error {
 }
 
 func (c *frpClient) buildPath(api string) string {
-	return fmt.Sprintf("http://%s%s", c.addr, api)
+	return fmt.Sprintf("http://%s%s", c.addr.String(), api)
 }

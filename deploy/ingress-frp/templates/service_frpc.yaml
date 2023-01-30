@@ -8,6 +8,7 @@ metadata:
     {{- include "ingress-frp.selectorLabels" . | nindent 4 }}
 spec:
   type: ClusterIP
+  clusterIP: None
   ports:
   - port: {{ .Values.frp.frpc.port }}
     targetPort: {{ .Values.frp.frpc.port }}

@@ -21,11 +21,15 @@ func (p MapConfig) ToMap() map[string]string {
 // local_ip = 80
 // custom_domains = web.yourdomain.com
 // locations = /
+// group = web
+// group_key = 123
 type HttpConfig struct {
 	LocalIp   string
 	LocalPort string
 	Host      string
 	Locations string
+	Group     string
+	GroupKey  string
 }
 
 func (h *HttpConfig) ToMap() map[string]string {
@@ -43,6 +47,12 @@ func (h *HttpConfig) ToMap() map[string]string {
 	if len(h.Locations) > 0 {
 		m["locations"] = h.Locations
 	}
+	if len(h.Group) > 0 {
+		m["group"] = h.Group
+	}
+	if len(h.GroupKey) > 0 {
+		m["group_key"] = h.GroupKey
+	}
 	return m
 }
 
@@ -52,5 +62,7 @@ func NewHttpConfig(m map[string]string) *HttpConfig {
 		LocalPort: m["local_port"],
 		Host:      m["custom_domains"],
 		Locations: m["locations"],
+		Group:     m["group"],
+		GroupKey:  m["group_key"],
 	}
 }
