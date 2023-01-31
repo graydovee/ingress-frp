@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-TAG ?= v0.0.4
+TAG ?= dev
 REPO ?= graydovee/ingress-frp
 IMG ?= ${REPO}:${TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.

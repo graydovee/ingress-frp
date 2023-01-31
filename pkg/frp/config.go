@@ -11,6 +11,24 @@ type Config interface {
 	EnableGroup() bool
 }
 
+func ConfigEquals(cfg1, cfg2 Config) bool {
+	m1 := cfg1.ToMap()
+	m2 := cfg2.ToMap()
+	if len(m1) != len(m2) {
+		return false
+	}
+	for k, v1 := range m1 {
+		v2, ok := m2[k]
+		if !ok {
+			return false
+		}
+		if v1 != v2 {
+			return false
+		}
+	}
+	return true
+}
+
 type MapConfig map[string]string
 
 func (p MapConfig) String() string {

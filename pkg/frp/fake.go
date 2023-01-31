@@ -85,5 +85,7 @@ func NewFakeSyncer() Syncer {
 		clients: []Client{
 			NewFakeClient(),
 		},
+		ch:         make(chan struct{}),
+		configsMap: make(map[string]map[string]Config),
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/grydovee/ingress-frp/pkg/constants"
 	"github.com/grydovee/ingress-frp/pkg/utils"
 	"net"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sync"
 	"time"
@@ -92,11 +91,13 @@ func (s *syncer) SetProxies(key string, configs map[string]Config) {
 }
 
 func (s *syncer) Sync() {
+	if s.ctx == nil {
+		return
+	}
 	select {
 	case <-s.ctx.Done():
 		return
-	case <-s.ch:
-		s.ch <- struct{}{}
+	case s.ch <- struct{}{}:
 	default:
 	}
 }
@@ -127,7 +128,7 @@ func (s *syncer) sync(ctx context.Context) {
 			l.Error(err, "get config error", "client", cli.Addr())
 			continue
 		}
-		newProxy := make(map[string]Config)
+		newProxy := make(Proxy)
 		for name, config := range groupProxies {
 			newProxy[fmt.Sprintf("%s/%s", cli.Addr(), name)] = config
 		}
@@ -138,7 +139,7 @@ func (s *syncer) sync(ctx context.Context) {
 			}
 		}
 
-		if reflect.DeepEqual(newProxy, configs.Proxy) {
+		if newProxy.Equals(configs.Proxy) {
 			continue
 		}
 		l.Info("sync config", "client", cli.Addr())

@@ -6,6 +6,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"testing"
+	"time"
 )
 
 func TestConfig(t *testing.T) {
@@ -43,4 +44,19 @@ func TestConfig(t *testing.T) {
 	l.Info(string(Marshal(cfg)))
 
 	l.Info("print cfg", "cfg", cfg)
+
+	s := NewFakeSyncer()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go s.Start(ctx)
+	time.Sleep(time.Second)
+
+	s.SetProxies("", cfg.Proxy)
+	s.Sync()
+
+	time.Sleep(time.Second)
+	s.Sync()
+
+	time.Sleep(time.Second)
+	s.Sync()
 }
