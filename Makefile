@@ -1,8 +1,9 @@
 
 # Image URL to use all building/pushing image targets
-TAG ?= v0.0.3
+TAG ?= dev
 REPO ?= graydovee/ingress-frp
 IMG ?= ${REPO}:${TAG}
+RELEASE_TAG ?= ${TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.25.0
 
@@ -83,6 +84,8 @@ docker-push: ## Push docker image with the manager.
 
 .PHONY: docker-release
 docker-release: ## Push docker image with the manager.
+	docker tag ${IMG} ${REPO}:${RELEASE_TAG}
+	docker push ${REPO}:${RELEASE_TAG}
 	docker tag ${IMG} ${REPO}:latest
 	docker push ${REPO}:latest
 

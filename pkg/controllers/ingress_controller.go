@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"github.com/grydovee/ingress-frp/pkg/frp"
 	corev1 "k8s.io/api/core/v1"
@@ -42,6 +43,12 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	cfgs := make(map[string]frp.Config)
+
+	tlsMap, err := r.loadTlsSecrets(ctx, &ingress)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	for _, rule := range ingress.Spec.Rules {
 		for _, path := range rule.HTTP.Paths {
 			if path.PathType != nil && *path.PathType != networkingv1.PathTypePrefix {
@@ -63,7 +70,7 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 			switch svc.Spec.Type {
 			case corev1.ServiceTypeClusterIP:
-				cfg := &frp.HttpConfig{}
+				cfg := frp.HttpConfig{}
 				cfg.Host = rule.Host
 				cfg.LocalIp = svcToDomain(&svc)
 				cfg.LocalPort = strconv.Itoa(int(path.Backend.Service.Port.Number))
@@ -74,15 +81,22 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				cfg.Group = fmt.Sprintf("%x", bytes[:8])
 				cfg.GroupKey = fmt.Sprintf("%x", bytes[:])
 
-				cfgs[name] = cfg
+				if tls, ok := tlsMap[rule.Host]; ok && path.Path == "/" {
+					cfgs[name+":https"] = &frp.Https2HttpConfig{
+						HttpConfig: cfg,
+						CrtBase64:  tls.crtBase64,
+						KeyBase64:  tls.keyBase64,
+					}
+				}
+				cfgs[name+":http"] = &cfg
 			default:
 				l.Info("unsupported service type", "key", key)
 			}
 		}
 	}
 
-	l.Info("update frp config", "cfgs", cfgs)
-	r.FrpSyncer.SetProxies(cfgs)
+	l.Info("update frp config", "cfgs", fmt.Sprintf("%v", cfgs))
+	r.FrpSyncer.SetProxies(req.String(), cfgs)
 	return ctrl.Result{}, nil
 }
 
@@ -132,6 +146,35 @@ func (r *FrpIngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 		})).
 		Complete(r)
+}
+
+type tlsCert struct {
+	crtBase64 string
+	keyBase64 string
+}
+
+func (r *FrpIngressReconciler) loadTlsSecrets(ctx context.Context, ingress *networkingv1.Ingress) (map[string]tlsCert, error) {
+	secrets := make(map[string]tlsCert)
+	for _, tls := range ingress.Spec.TLS {
+		secret := &corev1.Secret{}
+		if err := r.Get(ctx, types.NamespacedName{Name: tls.SecretName, Namespace: ingress.Namespace}, secret); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return nil, err
+		}
+		var t tlsCert
+		t.crtBase64 = base64.StdEncoding.EncodeToString(secret.Data["tls.crt"])
+		t.keyBase64 = base64.StdEncoding.EncodeToString(secret.Data["tls.key"])
+		for _, host := range tls.Hosts {
+			secrets[host] = t
+		}
+	}
+	return secrets, nil
+}
+
+func base64Encode(data []byte) string {
+	return base64.StdEncoding.EncodeToString(data)
 }
 
 func svcToDomain(service *corev1.Service) string {

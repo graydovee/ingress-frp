@@ -2,6 +2,7 @@ package frp
 
 import (
 	"bytes"
+	"fmt"
 	"gopkg.in/ini.v1"
 	"sort"
 	"strings"
@@ -15,9 +16,40 @@ var iniOptions = ini.LoadOptions{
 	AllowBooleanKeys:    true,
 }
 
+type Proxy map[string]Config
+
+func (p Proxy) String() string {
+	pairs := make([]string, 0, len(p))
+	for name, config := range p {
+		pairs = append(pairs, name+":"+config.String())
+	}
+	return "{" + strings.Join(pairs, ", ") + "}"
+}
+
+func (p Proxy) Equals(proxy Proxy) bool {
+	if len(p) != len(proxy) {
+		return false
+	}
+
+	for name, cfg1 := range p {
+		cfg2, ok := proxy[name]
+		if !ok {
+			return false
+		}
+		if !ConfigEquals(cfg1, cfg2) {
+			return false
+		}
+	}
+	return true
+}
+
 type Configs struct {
 	Common MapConfig
-	Proxy  map[string]Config
+	Proxy  Proxy
+}
+
+func (c *Configs) String() string {
+	return fmt.Sprintf("{common:%s,proxies: %v}", c.Common, c.Proxy)
 }
 
 func Unmarshal(data []byte) (*Configs, error) {

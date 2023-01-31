@@ -6,7 +6,6 @@ import (
 	"github.com/grydovee/ingress-frp/pkg/constants"
 	"github.com/grydovee/ingress-frp/pkg/utils"
 	"net"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sync"
 	"time"
@@ -14,8 +13,7 @@ import (
 
 type Syncer interface {
 	Start(ctx context.Context) error
-	SetConfig(configs *Configs)
-	SetProxies(configs map[string]Config)
+	SetProxies(key string, configs map[string]Config)
 	Sync()
 }
 
@@ -23,28 +21,36 @@ type syncer struct {
 	ctx context.Context
 
 	domainWatcher *utils.DomainWatcher
-	clients       map[string]Client
+	clients       []Client
 
-	configs *Configs
-	ch      chan struct{}
-	mu      sync.Mutex
+	configsMap map[string]map[string]Config
+	ch         chan struct{}
+	mu         sync.Mutex
 }
 
 func NewSyncer(addr string, port uint16, uname string, passwd string) Syncer {
 	s := &syncer{
 		domainWatcher: utils.NewDomainWatcher(addr),
 		ch:            make(chan struct{}),
+		configsMap:    make(map[string]map[string]Config),
 	}
 	s.domainWatcher.OnClientChange = func(ips []net.IP) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 
-		newClients := make(map[string]Client)
+		newClients := make([]Client, 0)
 		for _, ip := range ips {
-			if _, ok := s.clients[ip.String()]; ok {
-				newClients[ip.String()] = s.clients[ip.String()]
+			var foundCli Client
+			for i := range s.clients {
+				if s.clients[i].Addr().IP.Equal(ip) {
+					foundCli = s.clients[i]
+					break
+				}
+			}
+			if foundCli != nil {
+				newClients = append(newClients, foundCli)
 			} else {
-				newClients[ip.String()] = NewClient(ip, port, uname, passwd)
+				newClients = append(newClients, NewClient(ip, port, uname, passwd))
 			}
 		}
 		s.clients = newClients
@@ -75,31 +81,23 @@ func (s *syncer) Start(ctx context.Context) error {
 	}
 }
 
-func (s *syncer) SetConfig(configs *Configs) {
+func (s *syncer) SetProxies(key string, configs map[string]Config) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.configs = configs
 
-	s.Sync()
-}
-
-func (s *syncer) SetProxies(configs map[string]Config) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.configs == nil {
-		s.configs = &Configs{}
-	}
-	s.configs.Proxy = configs
+	s.configsMap[key] = configs
 
 	s.Sync()
 }
 
 func (s *syncer) Sync() {
+	if s.ctx == nil {
+		return
+	}
 	select {
 	case <-s.ctx.Done():
 		return
-	case <-s.ch:
-		s.ch <- struct{}{}
+	case s.ch <- struct{}{}:
 	default:
 	}
 }
@@ -107,22 +105,45 @@ func (s *syncer) Sync() {
 func (s *syncer) sync(ctx context.Context) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.configsMap == nil {
+		return
+	}
+
+	singletonProxies := make(map[string]Config)
+	groupProxies := make(map[string]Config)
+	for _, configs := range s.configsMap {
+		for key, config := range configs {
+			if config.EnableGroup() {
+				groupProxies[key] = config
+			} else {
+				singletonProxies[key] = config
+			}
+		}
+	}
 	l := log.FromContext(ctx)
-	for _, cli := range s.clients {
+
+	for i, cli := range s.clients {
 		configs, err := cli.GetConfigs(ctx)
 		if err != nil {
 			l.Error(err, "get config error", "client", cli.Addr())
 			continue
 		}
-		if reflect.DeepEqual(configs, s.configs) {
+		newProxy := make(Proxy)
+		for name, config := range groupProxies {
+			newProxy[fmt.Sprintf("%s/%s", cli.Addr(), name)] = config
+		}
+
+		for name, config := range singletonProxies {
+			if i == hashStr(name)%len(s.clients) {
+				newProxy[fmt.Sprintf("%s/%s", cli.Addr(), name)] = config
+			}
+		}
+
+		if newProxy.Equals(configs.Proxy) {
 			continue
 		}
 		l.Info("sync config", "client", cli.Addr())
 
-		newProxy := make(map[string]Config)
-		for name, config := range s.configs.Proxy {
-			newProxy[fmt.Sprintf("%s/%s", cli.Addr(), name)] = config
-		}
 		configs.Proxy = newProxy
 		if err = cli.SetConfig(ctx, configs); err != nil {
 			l.Error(err, "set config error", "client", cli.Addr())
@@ -133,5 +154,14 @@ func (s *syncer) sync(ctx context.Context) {
 			l.Error(err, "reload config error", "client", cli.Addr())
 			continue
 		}
+
 	}
+}
+
+func hashStr(str string) int {
+	var hash int
+	for i := 0; i < len(str); i++ {
+		hash = hash*31 + int(str[i])
+	}
+	return hash
 }

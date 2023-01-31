@@ -43,7 +43,7 @@ make undeploy
 
 ## How to use
 
-Should set ingress.spec.ingressClassName=frp to enable fro ingress
+Should set ingress.spec.ingressClassName=frp to enable frp ingress
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -85,6 +85,10 @@ spec:
     protocol: TCP
     name: http
 ```
+## warning: 
+* tls only be supported when path is "/" and tls not supports high availability
+* pathType only support "Prefix"
+
 
 ## Contributing
 
