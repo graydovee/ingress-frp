@@ -31,6 +31,18 @@ group=kube-apiserver
 local_ip=0.0.0.0
 remote_port=80
 local_port=8080
+
+[test_htts2http]
+type = https
+custom_domains = git.graydove.cn
+
+plugin = https2http
+plugin_local_addr = 127.0.0.1:3000
+
+# HTTPS 证书相关的配置
+
+plugin_crt_base64 = xxx
+plugin_key_base64 = xx
 `
 
 type fakeClient struct {
@@ -70,8 +82,8 @@ func (f *fakeClient) Addr() *net.TCPAddr {
 }
 func NewFakeSyncer() Syncer {
 	return &syncer{
-		clients: map[string]Client{
-			"127.0.0.1": NewFakeClient(),
+		clients: []Client{
+			NewFakeClient(),
 		},
 	}
 }

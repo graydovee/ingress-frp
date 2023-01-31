@@ -19,12 +19,12 @@ spec:
     spec:
       containers:
       - name: ingress-frpc
-        image: snowdreamtech/frpc
+        image: {{ .Values.frp.frpc.image }}
         imagePullPolicy: IfNotPresent
         command:
         - /bin/sh
         - -c
-        - "cp /etc/configmap/frpc.ini /etc/frp/frpc.ini && /usr/bin/frpc -c /etc/frp/frpc.ini"
+        - "mkdir /etc/frp; cp /etc/configmap/frpc.ini /etc/frp/frpc.ini && /usr/bin/frpc -c /etc/frp/frpc.ini"
         volumeMounts:
         - name: frpc-config
           mountPath: /etc/configmap

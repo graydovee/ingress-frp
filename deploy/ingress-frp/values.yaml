@@ -8,6 +8,7 @@ manager:
 frp:
   token:
   frpc:
+    image: graydovee/frpc:latest
     addr:
     port: 7400
     username: admin

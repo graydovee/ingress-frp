@@ -23,7 +23,7 @@ type syncer struct {
 	ctx context.Context
 
 	domainWatcher *utils.DomainWatcher
-	clients       map[string]Client
+	clients       []Client
 
 	configs *Configs
 	ch      chan struct{}
@@ -39,12 +39,19 @@ func NewSyncer(addr string, port uint16, uname string, passwd string) Syncer {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 
-		newClients := make(map[string]Client)
+		newClients := make([]Client, 0)
 		for _, ip := range ips {
-			if _, ok := s.clients[ip.String()]; ok {
-				newClients[ip.String()] = s.clients[ip.String()]
+			var foundCli Client
+			for i := range s.clients {
+				if s.clients[i].Addr().IP.Equal(ip) {
+					foundCli = s.clients[i]
+					break
+				}
+			}
+			if foundCli != nil {
+				newClients = append(newClients, foundCli)
 			} else {
-				newClients[ip.String()] = NewClient(ip, port, uname, passwd)
+				newClients = append(newClients, NewClient(ip, port, uname, passwd))
 			}
 		}
 		s.clients = newClients
@@ -107,8 +114,12 @@ func (s *syncer) Sync() {
 func (s *syncer) sync(ctx context.Context) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.configs == nil {
+		return
+	}
 	l := log.FromContext(ctx)
-	for _, cli := range s.clients {
+
+	for i, cli := range s.clients {
 		configs, err := cli.GetConfigs(ctx)
 		if err != nil {
 			l.Error(err, "get config error", "client", cli.Addr())
@@ -121,6 +132,9 @@ func (s *syncer) sync(ctx context.Context) {
 
 		newProxy := make(map[string]Config)
 		for name, config := range s.configs.Proxy {
+			if i != 0 && !config.EnableGroup() {
+				continue
+			}
 			newProxy[fmt.Sprintf("%s/%s", cli.Addr(), name)] = config
 		}
 		configs.Proxy = newProxy
@@ -133,5 +147,6 @@ func (s *syncer) sync(ctx context.Context) {
 			l.Error(err, "reload config error", "client", cli.Addr())
 			continue
 		}
+
 	}
 }
