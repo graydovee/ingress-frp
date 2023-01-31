@@ -2,6 +2,7 @@ package frp
 
 import (
 	"bytes"
+	"fmt"
 	"gopkg.in/ini.v1"
 	"sort"
 	"strings"
@@ -18,6 +19,10 @@ var iniOptions = ini.LoadOptions{
 type Configs struct {
 	Common MapConfig
 	Proxy  map[string]Config
+}
+
+func (c *Configs) String() string {
+	return fmt.Sprintf("{common:%s,proxies: %v}", c.Common, c.Proxy)
 }
 
 func Unmarshal(data []byte) (*Configs, error) {

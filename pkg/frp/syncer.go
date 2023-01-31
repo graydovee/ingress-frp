@@ -14,8 +14,7 @@ import (
 
 type Syncer interface {
 	Start(ctx context.Context) error
-	SetConfig(configs *Configs)
-	SetProxies(configs map[string]Config)
+	SetProxies(key string, configs map[string]Config)
 	Sync()
 }
 
@@ -25,15 +24,16 @@ type syncer struct {
 	domainWatcher *utils.DomainWatcher
 	clients       []Client
 
-	configs *Configs
-	ch      chan struct{}
-	mu      sync.Mutex
+	configsMap map[string]map[string]Config
+	ch         chan struct{}
+	mu         sync.Mutex
 }
 
 func NewSyncer(addr string, port uint16, uname string, passwd string) Syncer {
 	s := &syncer{
 		domainWatcher: utils.NewDomainWatcher(addr),
 		ch:            make(chan struct{}),
+		configsMap:    make(map[string]map[string]Config),
 	}
 	s.domainWatcher.OnClientChange = func(ips []net.IP) {
 		s.mu.Lock()
@@ -82,21 +82,11 @@ func (s *syncer) Start(ctx context.Context) error {
 	}
 }
 
-func (s *syncer) SetConfig(configs *Configs) {
+func (s *syncer) SetProxies(key string, configs map[string]Config) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.configs = configs
 
-	s.Sync()
-}
-
-func (s *syncer) SetProxies(configs map[string]Config) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.configs == nil {
-		s.configs = &Configs{}
-	}
-	s.configs.Proxy = configs
+	s.configsMap[key] = configs
 
 	s.Sync()
 }
@@ -114,8 +104,20 @@ func (s *syncer) Sync() {
 func (s *syncer) sync(ctx context.Context) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.configs == nil {
+	if s.configsMap == nil {
 		return
+	}
+
+	singletonProxies := make(map[string]Config)
+	groupProxies := make(map[string]Config)
+	for _, configs := range s.configsMap {
+		for key, config := range configs {
+			if config.EnableGroup() {
+				groupProxies[key] = config
+			} else {
+				singletonProxies[key] = config
+			}
+		}
 	}
 	l := log.FromContext(ctx)
 
@@ -125,18 +127,22 @@ func (s *syncer) sync(ctx context.Context) {
 			l.Error(err, "get config error", "client", cli.Addr())
 			continue
 		}
-		if reflect.DeepEqual(configs, s.configs) {
+		newProxy := make(map[string]Config)
+		for name, config := range groupProxies {
+			newProxy[fmt.Sprintf("%s/%s", cli.Addr(), name)] = config
+		}
+
+		for name, config := range singletonProxies {
+			if i == hashStr(name)%len(s.clients) {
+				newProxy[fmt.Sprintf("%s/%s", cli.Addr(), name)] = config
+			}
+		}
+
+		if reflect.DeepEqual(newProxy, configs.Proxy) {
 			continue
 		}
 		l.Info("sync config", "client", cli.Addr())
 
-		newProxy := make(map[string]Config)
-		for name, config := range s.configs.Proxy {
-			if i != 0 && !config.EnableGroup() {
-				continue
-			}
-			newProxy[fmt.Sprintf("%s/%s", cli.Addr(), name)] = config
-		}
 		configs.Proxy = newProxy
 		if err = cli.SetConfig(ctx, configs); err != nil {
 			l.Error(err, "set config error", "client", cli.Addr())
@@ -149,4 +155,12 @@ func (s *syncer) sync(ctx context.Context) {
 		}
 
 	}
+}
+
+func hashStr(str string) int {
+	var hash int
+	for i := 0; i < len(str); i++ {
+		hash = hash*31 + int(str[i])
+	}
+	return hash
 }

@@ -48,7 +48,6 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	fmt.Println(tlsMap)
 
 	for _, rule := range ingress.Spec.Rules {
 		for _, path := range rule.HTTP.Paths {
@@ -82,7 +81,7 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				cfg.Group = fmt.Sprintf("%x", bytes[:8])
 				cfg.GroupKey = fmt.Sprintf("%x", bytes[:])
 
-				if tls, ok := tlsMap[rule.Host]; ok {
+				if tls, ok := tlsMap[rule.Host]; ok && path.Path == "/" {
 					cfgs[name+":https"] = &frp.Https2HttpConfig{
 						HttpConfig: cfg,
 						CrtBase64:  tls.crtBase64,
@@ -90,15 +89,14 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 					}
 				}
 				cfgs[name+":http"] = &cfg
-
 			default:
 				l.Info("unsupported service type", "key", key)
 			}
 		}
 	}
 
-	l.Info("update frp config", "cfgs", cfgs)
-	r.FrpSyncer.SetProxies(cfgs)
+	l.Info("update frp config", "cfgs", fmt.Sprintf("%v", cfgs))
+	r.FrpSyncer.SetProxies(req.String(), cfgs)
 	return ctrl.Result{}, nil
 }
 

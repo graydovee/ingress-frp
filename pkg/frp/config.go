@@ -1,11 +1,30 @@
 package frp
 
+import (
+	"fmt"
+	"strings"
+)
+
 type Config interface {
+	fmt.Stringer
 	ToMap() map[string]string
 	EnableGroup() bool
 }
 
 type MapConfig map[string]string
+
+func (p MapConfig) String() string {
+	var pair []string
+	for k, v := range p {
+		if strings.HasPrefix(k, "plugin_crt") || strings.HasPrefix(k, "plugin_key") {
+			pair = append(pair, fmt.Sprintf("%s:%s", k, "******"))
+		} else {
+			pair = append(pair, fmt.Sprintf("%s:%s", k, v))
+		}
+	}
+
+	return "{" + strings.Join(pair, ", ") + "}"
+}
 
 func (p MapConfig) ToMap() map[string]string {
 	m := make(map[string]string, len(p))
@@ -70,6 +89,10 @@ func (h *HttpConfig) ToMap() map[string]string {
 		m["group_key"] = h.GroupKey
 	}
 	return m
+}
+
+func (h *HttpConfig) String() string {
+	return MapConfig(h.ToMap()).String()
 }
 
 func NewHttpConfig(m map[string]string) *HttpConfig {
@@ -150,4 +173,8 @@ func NewHttpsConfig(m map[string]string) *Https2HttpConfig {
 		CrtBase64: m["plugin_crt_base64"],
 		KeyBase64: m["plugin_key_base64"],
 	}
+}
+
+func (h *Https2HttpConfig) String() string {
+	return h.HttpConfig.String()
 }
