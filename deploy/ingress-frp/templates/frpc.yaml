@@ -19,8 +19,8 @@ spec:
     spec:
       containers:
       - name: ingress-frpc
-        image: {{ .Values.frp.frpc.image }}
-        imagePullPolicy: IfNotPresent
+        image: {{ .Values.frp.frpc.image.repository }}:{{ .Values.frp.frpc.image.tag }}
+        imagePullPolicy: {{ .Values.frp.frpc.image.pullPolicy }}
         command:
         - /bin/sh
         - -c

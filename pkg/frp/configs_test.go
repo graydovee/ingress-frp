@@ -41,6 +41,17 @@ func TestConfig(t *testing.T) {
 		KeyBase64: "321123321",
 	}
 
+	cfg.Proxy["ingress3"] = &HttpsReverseProxyConfig{
+		HttpConfig: HttpConfig{
+			Host:      "example.com",
+			Locations: "/",
+			LocalIp:   "127.0.0.1",
+			LocalPort: "3000",
+		},
+		TlsCrt: "123321123",
+		TlsKey: "321123321",
+	}
+
 	l.Info(string(Marshal(cfg)))
 
 	l.Info("print cfg", "cfg", cfg)

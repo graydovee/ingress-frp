@@ -82,10 +82,10 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				cfg.GroupKey = fmt.Sprintf("%x", bytes[:])
 
 				if tls, ok := tlsMap[rule.Host]; ok && path.Path == "/" {
-					cfgs[name+":https"] = &frp.Https2HttpConfig{
+					cfgs[name+":https"] = &frp.HttpsReverseProxyConfig{
 						HttpConfig: cfg,
-						CrtBase64:  tls.crtBase64,
-						KeyBase64:  tls.keyBase64,
+						TlsCrt:     tls.crtBase64,
+						TlsKey:     tls.keyBase64,
 					}
 				}
 				cfgs[name+":http"] = &cfg

@@ -127,7 +127,7 @@ func NewHttpConfig(m map[string]string) *HttpConfig {
 // Https2HttpConfig
 // [test_htts2http]
 // type = https
-// custom_domains = git.graydove.cn
+// custom_domains = web.yourdomain.com
 //
 // plugin = https2http
 // plugin_local_addr = 127.0.0.1:3000
@@ -194,5 +194,51 @@ func NewHttpsConfig(m map[string]string) *Https2HttpConfig {
 }
 
 func (h *Https2HttpConfig) String() string {
+	return h.HttpConfig.String()
+}
+
+// HttpsReverseProxyConfig
+// [git]
+// type = https_reverse_proxy
+// local_port = 4000
+// custom_domains = git.graydove.cn
+// tls_crts=xxx
+// tls_keys=xxx
+// group=test
+// group_key=test
+type HttpsReverseProxyConfig struct {
+	HttpConfig
+	TlsCrt string
+	TlsKey string
+}
+
+func (h *HttpsReverseProxyConfig) EnableGroup() bool {
+	return true
+}
+
+func (h *HttpsReverseProxyConfig) ToMap() map[string]string {
+	m := h.HttpConfig.ToMap()
+	m["type"] = "https_reverse_proxy"
+	m["tls_crts"] = h.TlsCrt
+	m["tls_keys"] = h.TlsKey
+	return m
+}
+
+func NewHttpsReverseProxyConfig(m map[string]string) *HttpsReverseProxyConfig {
+	return &HttpsReverseProxyConfig{
+		HttpConfig: HttpConfig{
+			LocalIp:   m["local_ip"],
+			LocalPort: m["local_port"],
+			Host:      m["custom_domains"],
+			Locations: m["locations"],
+			Group:     m["group"],
+			GroupKey:  m["group_key"],
+		},
+		TlsCrt: m["tls_crts"],
+		TlsKey: m["tls_keys"],
+	}
+}
+
+func (h *HttpsReverseProxyConfig) String() string {
 	return h.HttpConfig.String()
 }
