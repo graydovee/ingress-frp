@@ -4,7 +4,7 @@
 
 ## Description
 
-Ingress-Frp is a Ingress controller for Kubernetes. It use [Frp](https://github.com/fatedier/frp) to help you to visit your private network's Kubernetes services from the Internet.
+Ingress-Frp is a Ingress controller for Kubernetes. It use [Enhanced Frp](https://github.com/graydovee/frp) to help you to visit your private network's Kubernetes services from the Internet.
 
 ## Getting Started
 

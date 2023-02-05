@@ -1,9 +1,9 @@
 
 # Image URL to use all building/pushing image targets
+ARCH ?= $(shell go env GOARCH)
 TAG ?= dev
 REPO ?= graydovee/ingress-frp
 IMG ?= ${REPO}:${TAG}
-RELEASE_TAG ?= ${TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.25.0
 
@@ -76,18 +76,48 @@ run: manifests generate fmt vet ## Run a controller from your host.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build:  ## Build docker image with the manager.
-	docker build -f Dockerfile -t ${IMG} .
+	docker build --platform=linux/${ARCH} -f Dockerfile -t ${IMG} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
 
-.PHONY: docker-release
-docker-release: ## Push docker image with the manager.
-	docker tag ${IMG} ${REPO}:${RELEASE_TAG}
-	docker push ${REPO}:${RELEASE_TAG}
-	docker tag ${IMG} ${REPO}:latest
-	docker push ${REPO}:latest
+.PHONY: docker-build-arm64
+docker-build-arm64:  ## Build docker image arm64.
+	docker build --platform=linux/arm64 -f Dockerfile -t ${IMG}-arm64 .
+
+.PHONY: docker-build-amd64
+docker-build-amd64:  ## Build docker image amd64.
+	docker build --platform=linux/amd64 -f Dockerfile -t ${IMG}-arm64 .
+
+.PHONY: docker-push-arm64
+docker-push-arm64: docker-build-arm64
+	docker push ${IMG}-arm64
+
+.PHONY: docker-push-amd64
+docker-push-amd64: docker-build-amd64
+	docker push ${IMG}-amd64
+
+.PHONY: docker-manifest-tag
+docker-manifest-tag: docker-push-amd64 docker-push-arm64
+	docker manifest create -a ${IMG} ${IMG}-arm64 ${IMG}-amd64
+
+.PHONY: docker-manifest-push-tag
+docker-manifest-push-tag: docker-manifest-tag
+	docker manifest push ${IMG}
+
+.PHONY: docker-manifest-latest
+docker-manifest-latest: docker-push-amd64 docker-push-arm64
+	docker manifest rm ${REPO}:latest
+	docker manifest create -a ${REPO}:latest ${IMG}-arm64 ${IMG}-amd64
+
+.PHONY: docker-manifest-push-latest
+docker-manifest-push-latest: docker-manifest-latest
+	docker manifest push ${REPO}:latest
+
+.PHONY: release
+release: docker-manifest-push-tag docker-manifest-push-latest
+
 
 # PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
