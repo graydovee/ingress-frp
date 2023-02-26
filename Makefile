@@ -88,7 +88,7 @@ docker-build-arm64:  ## Build docker image arm64.
 
 .PHONY: docker-build-amd64
 docker-build-amd64:  ## Build docker image amd64.
-	docker build --platform=linux/amd64 -f Dockerfile -t ${IMG}-arm64 .
+	docker build --platform=linux/amd64 -f Dockerfile -t ${IMG}-amd64 .
 
 .PHONY: docker-push-arm64
 docker-push-arm64: docker-build-arm64
