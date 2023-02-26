@@ -18,7 +18,7 @@ helm upgrade ingress-frp ./deploy/ingress-frp -n kube-system \
 --set frp.frpc.nodeSelector."ingress\.graydove\.cn/frp"=frpc \ 
 --set frp.frps.addr=<YOUR_FRP_SERVER_ADDRESS> \
 --set frp.frps.port=<YOUR_FRP_SERVER_PORT> \
---set manager.image.tag=v0.0.2
+--set manager.image.tag=latest
 ```
 
 #### install with Kustomize
