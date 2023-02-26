@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/grydovee/ingress-frp/pkg/constants"
 	networkingv1 "k8s.io/api/networking/v1"
 )
@@ -20,4 +22,10 @@ func IngressMatch(ingress *networkingv1.Ingress) bool {
 		}
 	}
 	return ingressClassName == constants.IngressClassName
+}
+
+func GenerateGroup(name, proxyType string) (string, string) {
+	hashKey := fmt.Sprintf("%s/%s", name, proxyType)
+	bytes := sha256.Sum256([]byte(hashKey))
+	return fmt.Sprintf("%x", bytes[:8]), fmt.Sprintf("%x", bytes[:])
 }

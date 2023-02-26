@@ -43,6 +43,7 @@ spec:
         - --logtostderr=true
         - --v=0
         image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.1
+        imagePullPolicy: IfNotPresent
         name: kube-rbac-proxy
         ports:
         - containerPort: 8443
@@ -61,7 +62,7 @@ spec:
             drop:
             - ALL
       - command:
-        - /manager
+        - /bin/manager
         args:
         - --health-probe-bind-address=:8081
         - --metrics-bind-address=127.0.0.1:8080

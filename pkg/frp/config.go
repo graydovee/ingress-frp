@@ -107,6 +107,9 @@ func (h *HttpConfig) ToMap() map[string]string {
 	if len(h.GroupKey) > 0 {
 		m["group_key"] = h.GroupKey
 	}
+	if len(h.Redirect) > 0 {
+		m["redirect"] = h.Redirect
+	}
 	return m
 }
 
@@ -122,6 +125,7 @@ func NewHttpConfig(m map[string]string) *HttpConfig {
 		Locations: m["locations"],
 		Group:     m["group"],
 		GroupKey:  m["group_key"],
+		Redirect:  m["redirect"],
 	}
 }
 
