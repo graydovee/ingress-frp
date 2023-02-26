@@ -79,6 +79,7 @@ type HttpConfig struct {
 	Locations string
 	Group     string
 	GroupKey  string
+	Redirect  string
 }
 
 func (h *HttpConfig) EnableGroup() bool {
@@ -106,6 +107,9 @@ func (h *HttpConfig) ToMap() map[string]string {
 	if len(h.GroupKey) > 0 {
 		m["group_key"] = h.GroupKey
 	}
+	if len(h.Redirect) > 0 {
+		m["redirect"] = h.Redirect
+	}
 	return m
 }
 
@@ -121,6 +125,7 @@ func NewHttpConfig(m map[string]string) *HttpConfig {
 		Locations: m["locations"],
 		Group:     m["group"],
 		GroupKey:  m["group_key"],
+		Redirect:  m["redirect"],
 	}
 }
 
@@ -197,35 +202,35 @@ func (h *Https2HttpConfig) String() string {
 	return h.HttpConfig.String()
 }
 
-// HttpsReverseProxyConfig
+// ServerHttpsConfig
 // [git]
-// type = https_reverse_proxy
+// type = server_https
 // local_port = 4000
 // custom_domains = git.graydove.cn
 // tls_crts=xxx
 // tls_keys=xxx
 // group=test
 // group_key=test
-type HttpsReverseProxyConfig struct {
+type ServerHttpsConfig struct {
 	HttpConfig
 	TlsCrt string
 	TlsKey string
 }
 
-func (h *HttpsReverseProxyConfig) EnableGroup() bool {
+func (h *ServerHttpsConfig) EnableGroup() bool {
 	return true
 }
 
-func (h *HttpsReverseProxyConfig) ToMap() map[string]string {
+func (h *ServerHttpsConfig) ToMap() map[string]string {
 	m := h.HttpConfig.ToMap()
-	m["type"] = "https_reverse_proxy"
+	m["type"] = "server_https"
 	m["tls_crts"] = h.TlsCrt
 	m["tls_keys"] = h.TlsKey
 	return m
 }
 
-func NewHttpsReverseProxyConfig(m map[string]string) *HttpsReverseProxyConfig {
-	return &HttpsReverseProxyConfig{
+func NewServerHttpsConfig(m map[string]string) *ServerHttpsConfig {
+	return &ServerHttpsConfig{
 		HttpConfig: HttpConfig{
 			LocalIp:   m["local_ip"],
 			LocalPort: m["local_port"],
@@ -239,6 +244,6 @@ func NewHttpsReverseProxyConfig(m map[string]string) *HttpsReverseProxyConfig {
 	}
 }
 
-func (h *HttpsReverseProxyConfig) String() string {
+func (h *ServerHttpsConfig) String() string {
 	return h.HttpConfig.String()
 }

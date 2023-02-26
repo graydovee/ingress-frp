@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"github.com/grydovee/ingress-frp/pkg/frp"
@@ -77,18 +76,25 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				cfg.Locations = path.Path
 				name := fmt.Sprintf("%s/%s/%s", ingress.Namespace, ingress.Name, svc.Name)
 
-				bytes := sha256.Sum256([]byte(name))
-				cfg.Group = fmt.Sprintf("%x", bytes[:8])
-				cfg.GroupKey = fmt.Sprintf("%x", bytes[:])
-
 				if tls, ok := tlsMap[rule.Host]; ok && path.Path == "/" {
-					cfgs[name+":https"] = &frp.HttpsReverseProxyConfig{
+					// https
+					httpsCfg := &frp.ServerHttpsConfig{
 						HttpConfig: cfg,
 						TlsCrt:     tls.crtBase64,
 						TlsKey:     tls.keyBase64,
 					}
+					httpsCfg.Group, httpsCfg.GroupKey = GenerateGroup(name, "server_https")
+					cfgs[name+":https"] = httpsCfg
+					// http redirect
+					httpCfg := cfg
+					httpCfg.Redirect = fmt.Sprintf("https://%s:443", httpCfg.Host)
+					httpCfg.Group, httpCfg.GroupKey = GenerateGroup(name, "http")
+					cfgs[name+":http"] = &httpCfg
+				} else {
+					// http
+					cfg.Group, cfg.GroupKey = GenerateGroup(name, "http")
+					cfgs[name+":http"] = &cfg
 				}
-				cfgs[name+":http"] = &cfg
 			default:
 				l.Info("unsupported service type", "key", key)
 			}

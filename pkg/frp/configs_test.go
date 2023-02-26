@@ -41,7 +41,7 @@ func TestConfig(t *testing.T) {
 		KeyBase64: "321123321",
 	}
 
-	cfg.Proxy["ingress3"] = &HttpsReverseProxyConfig{
+	cfg.Proxy["ingress3"] = &ServerHttpsConfig{
 		HttpConfig: HttpConfig{
 			Host:      "example.com",
 			Locations: "/",
@@ -50,6 +50,9 @@ func TestConfig(t *testing.T) {
 		},
 		TlsCrt: "123321123",
 		TlsKey: "321123321",
+	}
+	cfg.Proxy["ingress4"] = &HttpConfig{
+		Redirect: "https://baidu.com",
 	}
 
 	l.Info(string(Marshal(cfg)))
