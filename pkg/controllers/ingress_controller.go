@@ -82,13 +82,21 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				cfg.GroupKey = fmt.Sprintf("%x", bytes[:])
 
 				if tls, ok := tlsMap[rule.Host]; ok && path.Path == "/" {
-					cfgs[name+":https"] = &frp.HttpsReverseProxyConfig{
+					// https
+					cfgs[name+":https"] = &frp.ServerHttpsConfig{
 						HttpConfig: cfg,
 						TlsCrt:     tls.crtBase64,
 						TlsKey:     tls.keyBase64,
 					}
+					cfgs[name+":http"] = &frp.HttpConfig{
+						Redirect: fmt.Sprintf("https://%s:443", cfg.Host),
+						Group:    cfg.Group,
+						GroupKey: cfg.GroupKey,
+					}
+				} else {
+					// http
+					cfgs[name+":http"] = &cfg
 				}
-				cfgs[name+":http"] = &cfg
 			default:
 				l.Info("unsupported service type", "key", key)
 			}

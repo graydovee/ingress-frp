@@ -41,7 +41,7 @@ func TestConfig(t *testing.T) {
 		KeyBase64: "321123321",
 	}
 
-	cfg.Proxy["ingress3"] = &HttpsReverseProxyConfig{
+	cfg.Proxy["ingress3"] = &ServerHttpsConfig{
 		HttpConfig: HttpConfig{
 			Host:      "example.com",
 			Locations: "/",
