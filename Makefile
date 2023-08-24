@@ -90,9 +90,13 @@ docker-build-arm64:  ## Build docker image arm64.
 docker-build-amd64:  ## Build docker image amd64.
 	docker build --platform=linux/amd64 -f Dockerfile -t ${IMG}-amd64 .
 
-.PHONY: docker-build-release
-docker-build-release:
+.PHONY: docker-release-release
+docker-release-release:
+ifeq ($(TAG), dev)
+	docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG} . --push
+else
 	docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG} -t ${REPO}:latest . --push
+endif
 
 ##@ Deployment
 
