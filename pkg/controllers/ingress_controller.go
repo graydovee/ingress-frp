@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/grydovee/ingress-frp/pkg/constants"
 	"github.com/grydovee/ingress-frp/pkg/frp"
+	"github.com/grydovee/ingress-frp/pkg/frp/config"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,10 +40,19 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	var ingress networkingv1.Ingress
 	if err := r.Get(ctx, req.NamespacedName, &ingress); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		if apierrors.IsNotFound(err) {
+			r.FrpSyncer.DeleteProxies(req.String())
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
 	}
 
-	cfgs := make(map[string]frp.Config)
+	if !ingress.DeletionTimestamp.IsZero() {
+		r.FrpSyncer.DeleteProxies(req.String())
+		return ctrl.Result{}, nil
+	}
+
+	cfgs := make(map[string]config.Config)
 
 	tlsMap, err := r.loadTlsSecrets(ctx, &ingress)
 	if err != nil {
@@ -69,22 +80,41 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 			switch svc.Spec.Type {
 			case corev1.ServiceTypeClusterIP:
-				cfg := frp.HttpConfig{}
+				cfg := config.HttpConfig{}
 				cfg.Host = rule.Host
 				cfg.LocalIp = svcToDomain(&svc)
 				cfg.LocalPort = strconv.Itoa(int(path.Backend.Service.Port.Number))
 				cfg.Locations = path.Path
 				name := fmt.Sprintf("%s/%s/%s", ingress.Namespace, ingress.Name, svc.Name)
-
+				if h, ok := ingress.Annotations[constants.AnnotationHostHeaderRewrite]; ok {
+					cfg.HostHeaderRewrite = h
+				} else {
+					cfg.HostHeaderRewrite = rule.Host
+				}
+				if f, ok := ingress.Annotations[constants.AnnotationHeaderXFromWhere]; ok {
+					cfg.HeaderXFromWhere = f
+				} else {
+					cfg.HeaderXFromWhere = "frp-ingress"
+				}
 				if tls, ok := tlsMap[rule.Host]; ok && path.Path == "/" {
 					// https
-					httpsCfg := &frp.ServerHttpsConfig{
-						HttpConfig: cfg,
-						TlsCrt:     tls.crtBase64,
-						TlsKey:     tls.keyBase64,
+					if ingress.Annotations[constants.AnnotationBackendProtocol] == "https" {
+						httpsCfg := &config.ServerHttps2HttpsConfig{
+							HttpConfig: cfg,
+							TlsCrt:     tls.crtBase64,
+							TlsKey:     tls.keyBase64,
+						}
+						httpsCfg.Group, httpsCfg.GroupKey = GenerateGroup(name, "server_https")
+						cfgs[name+":https"] = httpsCfg
+					} else {
+						httpsCfg := &config.ServerHttpsConfig{
+							HttpConfig: cfg,
+							TlsCrt:     tls.crtBase64,
+							TlsKey:     tls.keyBase64,
+						}
+						httpsCfg.Group, httpsCfg.GroupKey = GenerateGroup(name, "server_https")
+						cfgs[name+":https"] = httpsCfg
 					}
-					httpsCfg.Group, httpsCfg.GroupKey = GenerateGroup(name, "server_https")
-					cfgs[name+":https"] = httpsCfg
 					// http redirect
 					httpCfg := cfg
 					httpCfg.Redirect = fmt.Sprintf("https://%s:443", httpCfg.Host)
@@ -177,15 +207,4 @@ func (r *FrpIngressReconciler) loadTlsSecrets(ctx context.Context, ingress *netw
 		}
 	}
 	return secrets, nil
-}
-
-func base64Encode(data []byte) string {
-	return base64.StdEncoding.EncodeToString(data)
-}
-
-func svcToDomain(service *corev1.Service) string {
-	if service == nil {
-		return ""
-	}
-	return fmt.Sprintf("%s.%s.svc.cluster.local", service.Name, service.Namespace)
 }

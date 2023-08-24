@@ -1,7 +1,8 @@
-package frp
+package config
 
 import (
 	"context"
+	"github.com/grydovee/ingress-frp/pkg/frp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -15,7 +16,7 @@ func TestConfig(t *testing.T) {
 	}
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	l := log.FromContext(context.Background())
-	client := NewFakeClient()
+	client := frp.NewFakeClient()
 	cfg, err := client.GetConfigs(context.Background())
 	if err != nil {
 		t.Error(err)
@@ -59,7 +60,7 @@ func TestConfig(t *testing.T) {
 
 	l.Info("print cfg", "cfg", cfg)
 
-	s := NewFakeSyncer()
+	s := frp.NewFakeSyncer()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go s.Start(ctx)
