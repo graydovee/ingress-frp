@@ -130,7 +130,7 @@ func (h *ServerHttpsConfig) EnableGroup() bool {
 }
 
 func (h *ServerHttpsConfig) ToMap() map[string]string {
-	m := h.HttpConfig.ToMap()
+	m := ToConfigMap(h)
 	m["type"] = TypeServerHttps
 	return m
 }
@@ -232,7 +232,7 @@ func (h *ServerHttps2HttpsConfig) EnableGroup() bool {
 }
 
 func (h *ServerHttps2HttpsConfig) ToMap() map[string]string {
-	m := h.HttpConfig.ToMap()
+	m := ToConfigMap(h)
 	m["type"] = TypeServerHttps
 	m["plugin"] = PluginTypeHttp2Https
 	if len(h.LocalIp) > 0 {
