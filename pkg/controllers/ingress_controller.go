@@ -88,8 +88,6 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				name := fmt.Sprintf("%s/%s/%s", ingress.Namespace, ingress.Name, svc.Name)
 				if h, ok := ingress.Annotations[constants.AnnotationHostHeaderRewrite]; ok {
 					cfg.HostHeaderRewrite = h
-				} else {
-					cfg.HostHeaderRewrite = rule.Host
 				}
 				if f, ok := ingress.Annotations[constants.AnnotationHeaderXFromWhere]; ok {
 					cfg.HeaderXFromWhere = f
