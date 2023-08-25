@@ -1,7 +1,8 @@
 
 # Image URL to use all building/pushing image targets
 ARCH ?= $(shell go env GOARCH)
-TAG ?= dev
+VERSION = v0.0.9
+TAG ?= ${VERSION}
 REPO ?= graydovee/ingress-frp
 IMG ?= ${REPO}:${TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
@@ -90,13 +91,14 @@ docker-build-arm64:  ## Build docker image arm64.
 docker-build-amd64:  ## Build docker image amd64.
 	docker build --platform=linux/amd64 -f Dockerfile -t ${IMG}-amd64 .
 
+
+.PHONY: docker-dev-push
+docker-dev-push:
+	docker buildx build --platform linux/amd64,linux/arm64 -t ${REPO}:dev . --push
+
 .PHONY: docker-release-push
 docker-release-push:
-ifeq ($(TAG), dev)
-	docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG} . --push
-else
 	docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG} -t ${REPO}:latest . --push
-endif
 
 ##@ Deployment
 
