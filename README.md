@@ -4,7 +4,8 @@
 
 ## Description
 
-Ingress-Frp is a Ingress controller for Kubernetes. It use [Enhanced Frp](https://github.com/graydovee/frp) to help you to visit your private network's Kubernetes services from the Internet.
+Ingress-Frp is a Ingress controller for Kubernetes. It use [Enhanced Frp](https://github.com/graydovee/frp) to help you
+to visit your private network's Kubernetes services from the Internet.
 
 ## Getting Started
 
@@ -54,20 +55,20 @@ metadata:
 spec:
   ingressClassName: frp
   tls:
-  - hosts:
-    - myproject.example.com
-    secretName: myproject-tls
+    - hosts:
+        - myproject.example.com
+      secretName: myproject-tls
   rules:
-  - host: myproject.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: myproject
-            port:
-              number: 3000
+    - host: myproject.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: myproject
+                port:
+                  number: 3000
 ---
 apiVersion: v1
 kind: Service
@@ -80,15 +81,22 @@ spec:
   type: ClusterIP
   clusterIP: 127.0.0.1
   ports:
-  - port: 3000
-    targetPort: 3000
-    protocol: TCP
-    name: http
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+      name: http
 ```
-## warning: 
-* tls only be supported when path is "/" and tls not supports high availability
-* pathType only support "Prefix"
 
+## Annotations
+
+| Annotation                            | Description                             | Default       |
+|---------------------------------------|-----------------------------------------|---------------|
+| frp.kubernetes.io/host-header-rewrite | rewrite host header                     | ""            |
+| frp.kubernetes.io/header-x-from-where | add X-From-Where                        | "frp-ingress" |
+| frp.kubernetes.io/backend-protocol    | backend protocol, support http or https | "http"        |
+
+## warning:
+* pathType only support "Prefix"
 
 ## Contributing
 
@@ -96,10 +104,13 @@ Welcome to contribute
 
 ### How it works
 
-This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
+This project aims to follow the
+Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 
-It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/) and  [Frp](https://github.com/fatedier/frp)
-which provides a reconcile function responsible for synchronizing resources untile the desired state is reached on the cluster
+It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/)
+and  [Frp](https://github.com/fatedier/frp)
+which provides a reconcile function responsible for synchronizing resources untile the desired state is reached on the
+cluster
 
 https://book.kubebuilder.io/introduction.html)
 

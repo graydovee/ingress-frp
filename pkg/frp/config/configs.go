@@ -1,4 +1,4 @@
-package frp
+package config
 
 import (
 	"bytes"
@@ -36,7 +36,7 @@ func (p Proxy) Equals(proxy Proxy) bool {
 		if !ok {
 			return false
 		}
-		if !ConfigEquals(cfg1, cfg2) {
+		if !Equals(cfg1, cfg2) {
 			return false
 		}
 	}

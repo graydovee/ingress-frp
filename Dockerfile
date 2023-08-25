@@ -4,6 +4,9 @@ ARG TARGETOS
 ARG TARGETARCH
 
 WORKDIR /workspace
+
+ENV CGO_ENABLED=0
+
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum

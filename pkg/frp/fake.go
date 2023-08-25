@@ -2,6 +2,7 @@ package frp
 
 import (
 	"context"
+	"github.com/grydovee/ingress-frp/pkg/frp/config"
 	"net"
 )
 
@@ -46,26 +47,26 @@ plugin_key_base64 = xx
 `
 
 type fakeClient struct {
-	cfg *Configs
+	cfg *config.Configs
 }
 
 func NewFakeClient() Client {
 	return &fakeClient{}
 }
 
-func (f *fakeClient) GetConfigs(ctx context.Context) (*Configs, error) {
+func (f *fakeClient) GetConfigs(ctx context.Context) (*config.Configs, error) {
 	if f.cfg == nil {
-		cfg, err := Unmarshal([]byte(defaultConfig))
+		cfg, err := config.Unmarshal([]byte(defaultConfig))
 		if err != nil {
 			return nil, err
 		}
 		f.cfg = cfg
 	}
-	bytes := Marshal(f.cfg)
-	return Unmarshal(bytes)
+	bytes := config.Marshal(f.cfg)
+	return config.Unmarshal(bytes)
 }
 
-func (f *fakeClient) SetConfig(ctx context.Context, config *Configs) error {
+func (f *fakeClient) SetConfig(ctx context.Context, config *config.Configs) error {
 	f.cfg = config
 	return nil
 }
@@ -86,6 +87,6 @@ func NewFakeSyncer() Syncer {
 			NewFakeClient(),
 		},
 		ch:         make(chan struct{}),
-		configsMap: make(map[string]map[string]Config),
+		configsMap: make(map[string]map[string]config.Config),
 	}
 }
