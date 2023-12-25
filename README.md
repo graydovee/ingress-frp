@@ -98,6 +98,12 @@ spec:
 ## warning:
 * pathType only support "Prefix"
 
+## TODO
+- [ ] support basic auth
+- [ ] use tls connect to frps
+- [ ] support proxy node port
+- [ ] support default tls certificate
+
 ## Contributing
 
 Welcome to contribute
