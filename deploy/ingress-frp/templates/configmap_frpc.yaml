@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: ingress-frpc-config
+  name: {{ .Release.Name }}-frpc-config
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "ingress-frp.labels" . | nindent 4 }}
@@ -16,4 +16,10 @@ data:
     server_port={{ .Values.frp.frps.port }}
     {{- if .Values.frp.token }}
     token={{ .Values.frp.token }}
+    {{- end }}
+    {{ if .Values.frp.tls.enable }}
+    tls_enable = true
+    tls_cert_file =/etc/ssh/frp/certificate.crt
+    tls_key_file = /etc/ssh/frp/certificate.key
+    tls_trusted_ca_file = /etc/ssh/frp/ca.crt
     {{- end }}

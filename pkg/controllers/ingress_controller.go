@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/grydovee/ingress-frp/pkg/constants"
 	"github.com/grydovee/ingress-frp/pkg/frp"
-	"github.com/grydovee/ingress-frp/pkg/frp/config"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -20,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"strconv"
+	"strings"
 )
 
 type FrpIngressReconciler struct {
@@ -52,7 +52,7 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, nil
 	}
 
-	cfgs := make(map[string]config.Config)
+	cfgs := make(map[string]frp.Config)
 
 	tlsMap, err := r.loadTlsSecrets(ctx, &ingress)
 	if err != nil {
@@ -80,7 +80,7 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 			switch svc.Spec.Type {
 			case corev1.ServiceTypeClusterIP:
-				cfg := config.HttpConfig{}
+				cfg := frp.HttpConfig{}
 				cfg.Host = rule.Host
 				cfg.LocalIp = svcToDomain(&svc)
 				cfg.LocalPort = strconv.Itoa(int(path.Backend.Service.Port.Number))
@@ -94,10 +94,19 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				} else {
 					cfg.HeaderXFromWhere = "frp-ingress"
 				}
+				if a, ok := ingress.Annotations[constants.AnnotationBasicAuth]; ok {
+					split := strings.Split(a, ":")
+					if len(split) != 2 {
+						l.Info("invalid annotation basic-auth", "key", key)
+						continue
+					}
+					cfg.HttpUser = split[0]
+					cfg.HttpPwd = split[1]
+				}
 				if tls, ok := tlsMap[rule.Host]; ok && path.Path == "/" {
 					// https
 					if ingress.Annotations[constants.AnnotationBackendProtocol] == "https" {
-						httpsCfg := &config.ServerHttps2HttpsConfig{
+						httpsCfg := &frp.ServerHttps2HttpsConfig{
 							HttpConfig: cfg,
 							TlsCrt:     tls.crtBase64,
 							TlsKey:     tls.keyBase64,
@@ -105,7 +114,7 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 						httpsCfg.Group, httpsCfg.GroupKey = GenerateGroup(name, "server_https")
 						cfgs[name+":https"] = httpsCfg
 					} else {
-						httpsCfg := &config.ServerHttpsConfig{
+						httpsCfg := &frp.ServerHttpsConfig{
 							HttpConfig: cfg,
 							TlsCrt:     tls.crtBase64,
 							TlsKey:     tls.keyBase64,

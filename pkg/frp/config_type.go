@@ -1,4 +1,4 @@
-package config
+package frp
 
 // HttpConfig
 // [web01]
@@ -19,6 +19,8 @@ type HttpConfig struct {
 	Redirect          string `cfg:"redirect"`
 	HostHeaderRewrite string `cfg:"host_header_rewrite"`
 	HeaderXFromWhere  string `cfg:"header_X-From-Where"`
+	HttpUser          string `cfg:"http_user"`
+	HttpPwd           string `cfg:"http_pwd"`
 }
 
 var _ Config = (*HttpConfig)(nil)
@@ -46,6 +48,8 @@ func NewHttpConfig(m map[string]string) *HttpConfig {
 		Group:     m["group"],
 		GroupKey:  m["group_key"],
 		Redirect:  m["redirect"],
+		HttpUser:  m["http_user"],
+		HttpPwd:   m["http_pwd"],
 	}
 }
 
@@ -98,6 +102,8 @@ func NewHttps2HttpConfig(m map[string]string) *Https2HttpConfig {
 			Locations: m["locations"],
 			Group:     m["group"],
 			GroupKey:  m["group_key"],
+			HttpUser:  m["http_user"],
+			HttpPwd:   m["http_pwd"],
 		},
 		CrtBase64: m["plugin_crt_base64"],
 		KeyBase64: m["plugin_key_base64"],
@@ -144,6 +150,8 @@ func NewServerHttpsConfig(m map[string]string) *ServerHttpsConfig {
 			Locations: m["locations"],
 			Group:     m["group"],
 			GroupKey:  m["group_key"],
+			HttpUser:  m["http_user"],
+			HttpPwd:   m["http_pwd"],
 		},
 		TlsCrt: m["tls_crts"],
 		TlsKey: m["tls_keys"],
@@ -203,6 +211,8 @@ func NewHttps2HttpsConfig(m map[string]string) *Https2HttpsConfig {
 			Locations: m["locations"],
 			Group:     m["group"],
 			GroupKey:  m["group_key"],
+			HttpUser:  m["http_user"],
+			HttpPwd:   m["http_pwd"],
 		},
 		CrtBase64: m["plugin_crt_base64"],
 		KeyBase64: m["plugin_key_base64"],
@@ -254,6 +264,8 @@ func NewServerHttps2HttpsConfig(m map[string]string) *ServerHttps2HttpsConfig {
 			Locations: m["locations"],
 			Group:     m["group"],
 			GroupKey:  m["group_key"],
+			HttpUser:  m["http_user"],
+			HttpPwd:   m["http_pwd"],
 		},
 		TlsCrt: m["tls_crts"],
 		TlsKey: m["tls_keys"],

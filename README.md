@@ -4,7 +4,8 @@
 
 ## Description
 
-Ingress-Frp is a Ingress controller for Kubernetes. It use [Enhanced Frp](https://github.com/graydovee/frpro) to help you
+Ingress-Frp is a Ingress controller for Kubernetes. It use [Enhanced Frp](https://github.com/graydovee/frpro) to help
+you
 to visit your private network's Kubernetes services from the Internet.
 
 ## Getting Started
@@ -89,20 +90,22 @@ spec:
 
 ## Annotations
 
-| Annotation                            | Description                             | Default       |
-|---------------------------------------|-----------------------------------------|---------------|
-| frp.kubernetes.io/host-header-rewrite | rewrite host header                     | ""            |
-| frp.kubernetes.io/header-x-from-where | add X-From-Where                        | "frp-ingress" |
-| frp.kubernetes.io/backend-protocol    | backend protocol, support http or https | "http"        |
+| Annotation                            | Description                                        | Default       |
+|---------------------------------------|----------------------------------------------------|---------------|
+| frp.kubernetes.io/host-header-rewrite | rewrite host header                                | ""            |
+| frp.kubernetes.io/header-x-from-where | add X-From-Where                                   | "frp-ingress" |
+| frp.kubernetes.io/backend-protocol    | backend protocol, support http or https            | "http"        |
+| frp.kubernetes.io/basic-auth          | enable basic auth, values like "username:password" | ""            |
 
 ## warning:
+
 * pathType only support "Prefix"
 
 ## TODO
-- [ ] support basic auth
-- [ ] use tls connect to frps
+
+- [x] support basic auth
+- [x] use tls connect to frps
 - [ ] support proxy node port
-- [ ] support default tls certificate
 
 ## Contributing
 

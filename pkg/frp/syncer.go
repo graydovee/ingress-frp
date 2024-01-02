@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/grydovee/ingress-frp/pkg/constants"
-	"github.com/grydovee/ingress-frp/pkg/frp/config"
 	"github.com/grydovee/ingress-frp/pkg/utils"
 	"net"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -14,7 +13,7 @@ import (
 
 type Syncer interface {
 	Start(ctx context.Context) error
-	SetProxies(key string, configs map[string]config.Config)
+	SetProxies(key string, configs map[string]Config)
 	DeleteProxies(key string)
 	Sync()
 }
@@ -25,7 +24,7 @@ type syncer struct {
 	domainWatcher *utils.DomainWatcher
 	clients       []Client
 
-	configsMap map[string]map[string]config.Config
+	configsMap map[string]map[string]Config
 	ch         chan struct{}
 	mu         sync.Mutex
 }
@@ -36,7 +35,7 @@ func NewSyncer(addr string, port uint16, uname string, passwd string) Syncer {
 	s := &syncer{
 		domainWatcher: utils.NewDomainWatcher(addr),
 		ch:            make(chan struct{}),
-		configsMap:    make(map[string]map[string]config.Config),
+		configsMap:    make(map[string]map[string]Config),
 	}
 	s.domainWatcher.OnClientChange = func(ips []net.IP) {
 		s.mu.Lock()
@@ -85,7 +84,7 @@ func (s *syncer) Start(ctx context.Context) error {
 	}
 }
 
-func (s *syncer) SetProxies(key string, configs map[string]config.Config) {
+func (s *syncer) SetProxies(key string, configs map[string]Config) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -122,14 +121,14 @@ func (s *syncer) sync(ctx context.Context) {
 		return
 	}
 
-	singletonProxies := make(map[string]config.Config)
-	groupProxies := make(map[string]config.Config)
+	singletonProxies := make(map[string]Config)
+	groupProxies := make(map[string]Config)
 	for _, configs := range s.configsMap {
-		for key, config := range configs {
-			if config.EnableGroup() {
-				groupProxies[key] = config
+		for key, cfg := range configs {
+			if cfg.EnableGroup() {
+				groupProxies[key] = cfg
 			} else {
-				singletonProxies[key] = config
+				singletonProxies[key] = cfg
 			}
 		}
 	}
@@ -141,14 +140,14 @@ func (s *syncer) sync(ctx context.Context) {
 			l.Error(err, "get config error", "client", cli.Addr())
 			continue
 		}
-		newProxy := make(config.Proxy)
-		for name, config := range groupProxies {
-			newProxy[fmt.Sprintf("%s/%s", cli.Addr(), name)] = config
+		newProxy := make(Proxy)
+		for name, cfg := range groupProxies {
+			newProxy[fmt.Sprintf("%s/%s", cli.Addr(), name)] = cfg
 		}
 
-		for name, config := range singletonProxies {
+		for name, cfg := range singletonProxies {
 			if i == hashStr(name)%len(s.clients) {
-				newProxy[fmt.Sprintf("%s/%s", cli.Addr(), name)] = config
+				newProxy[fmt.Sprintf("%s/%s", cli.Addr(), name)] = cfg
 			}
 		}
 

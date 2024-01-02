@@ -2,7 +2,7 @@ package frp
 
 import (
 	"context"
-	"github.com/grydovee/ingress-frp/pkg/frp/config"
+	"fmt"
 	"net"
 )
 
@@ -47,27 +47,29 @@ plugin_key_base64 = xx
 `
 
 type fakeClient struct {
-	cfg *config.Configs
+	cfg *Configs
 }
 
 func NewFakeClient() Client {
 	return &fakeClient{}
 }
 
-func (f *fakeClient) GetConfigs(ctx context.Context) (*config.Configs, error) {
+func (f *fakeClient) GetConfigs(ctx context.Context) (*Configs, error) {
 	if f.cfg == nil {
-		cfg, err := config.Unmarshal([]byte(defaultConfig))
+		cfg, err := Unmarshal([]byte(defaultConfig))
 		if err != nil {
 			return nil, err
 		}
 		f.cfg = cfg
 	}
-	bytes := config.Marshal(f.cfg)
-	return config.Unmarshal(bytes)
+	bytes := Marshal(f.cfg)
+	return Unmarshal(bytes)
 }
 
-func (f *fakeClient) SetConfig(ctx context.Context, config *config.Configs) error {
+func (f *fakeClient) SetConfig(ctx context.Context, config *Configs) error {
 	f.cfg = config
+	cfg := Marshal(f.cfg)
+	fmt.Println(string(cfg))
 	return nil
 }
 
@@ -83,10 +85,11 @@ func (f *fakeClient) Addr() *net.TCPAddr {
 }
 func NewFakeSyncer() Syncer {
 	return &syncer{
+		ctx: context.Background(),
 		clients: []Client{
 			NewFakeClient(),
 		},
 		ch:         make(chan struct{}),
-		configsMap: make(map[string]map[string]config.Config),
+		configsMap: make(map[string]map[string]Config),
 	}
 }

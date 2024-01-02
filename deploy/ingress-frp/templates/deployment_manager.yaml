@@ -4,7 +4,7 @@ metadata:
   labels:
     control-plane: controller-manager
     {{- include "ingress-frp.labels" . | nindent 4 }}
-  name: ingress-frp-controller-manager
+  name: {{ .Release.Name }}-controller-manager
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
@@ -70,7 +70,7 @@ spec:
         {{ if .Values.frp.frpc.addr }}
         - --frp-addr={{ .Values.frp.frpc.addr }}
         {{ else }}
-        - --frp-addr=ingress-frpc-service.{{ .Release.Namespace }}.svc.cluster.local
+        - --frp-addr={{ .Release.Name }}-frpc-service.{{ .Release.Namespace }}.svc.cluster.local
         {{ end }}
         {{ if .Values.frp.frpc.port }}
         - --frp-port={{ .Values.frp.frpc.port }}
