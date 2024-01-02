@@ -1,12 +1,12 @@
 manager:
   image:
     repository: graydovee/ingress-frp
-    tag: v0.0.8
+    tag: v0.0.9
     pullPolicy: IfNotPresent
   extraArgs: [ ]
 
 frp:
-  token:
+  token: ""
   frpc:
     image:
       repository: graydovee/frproc
@@ -20,3 +20,8 @@ frp:
   frps:
     addr: 8.8.8.8
     port: 7000
+  tls:
+    enable: false
+    trustedCa:
+    cert:
+    key:

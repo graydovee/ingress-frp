@@ -4,7 +4,7 @@ metadata:
   labels:
     control-plane: controller-manager
     {{- include "ingress-frp.labels" . | nindent 4 }}
-  name: ingress-frp-controller-manager-metrics-service
+  name: {{ .Release.Name }}-controller-manager-metrics-service
   namespace: {{ .Release.Namespace }}
 spec:
   ports:

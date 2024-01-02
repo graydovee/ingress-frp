@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: ingress-frpc
+  name: {{ .Release.Name }}-frpc
   namespace: {{ .Release.Namespace }}
   labels:
     app: ingress-frpc
@@ -16,6 +16,8 @@ spec:
       labels:
         app: ingress-frpc
         {{- include "ingress-frp.selectorLabels" . | nindent 8 }}
+      annotations:
+        configmap-checksum: {{ include (print $.Template.BasePath "/configmap_frpc.yaml") . | sha256sum }}
     spec:
       containers:
       - name: ingress-frpc
@@ -28,12 +30,21 @@ spec:
         volumeMounts:
         - name: frpc-config
           mountPath: /etc/configmap
+      {{- if .Values.frp.tls.enable }}
+        - name: tls
+          mountPath: /etc/ssh/frp
+      {{- end }}
       volumes:
       - name: frpc-config
         configMap:
-          name: ingress-frpc-config
+          name: {{ .Release.Name }}-frpc-config
           items:
           - key: frpc.ini
             path: frpc.ini
+      {{- if .Values.frp.tls.enable }}
+      - name: tls
+        secret:
+          secretName: {{ .Release.Name }}-tls
+      {{- end }}
       nodeSelector:
         {{- toYaml .Values.frp.frpc.nodeSelector | nindent 8 }}
