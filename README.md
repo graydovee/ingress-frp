@@ -106,6 +106,8 @@ spec:
 - [x] support basic auth
 - [x] use tls connect to frps
 - [ ] support proxy node port
+- [ ] support default tls and cross namaespace tls
+- [ ] auto renew tls by certbot
 
 ## Contributing
 
