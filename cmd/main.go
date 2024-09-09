@@ -98,11 +98,7 @@ func main() {
 	if err := mgr.Add(fs); err != nil {
 		return
 	}
-	if err = (&controllers.FrpIngressReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		FrpSyncer: fs,
-	}).SetupWithManager(mgr); err != nil {
+	if err = (controllers.NewFrpIngressReconciler(mgr.GetClient(), mgr.GetScheme(), fs)).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "")
 		os.Exit(1)
 	}
