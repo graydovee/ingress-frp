@@ -12,3 +12,7 @@ const (
 	AnnotationBackendProtocol   = "frp.kubernetes.io/backend-protocol"
 	AnnotationBasicAuth         = "frp.kubernetes.io/basic-auth"
 )
+
+const (
+	IndexIngressSecretName = ".spec.tls.secretName"
+)

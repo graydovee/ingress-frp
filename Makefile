@@ -1,7 +1,7 @@
 
 # Image URL to use all building/pushing image targets
 ARCH ?= $(shell go env GOARCH)
-VERSION = v0.1.0
+VERSION = v0.1.1
 TAG ?= ${VERSION}
 REPO ?= graydovee/ingress-frp
 IMG ?= ${REPO}:${TAG}
@@ -94,7 +94,7 @@ docker-build-amd64:  ## Build docker image amd64.
 
 .PHONY: docker-dev-push
 docker-dev-push:
-	docker buildx build --platform linux/amd64,linux/arm64 -t ${REPO}:dev . --push
+	docker buildx build --platform linux/arm64 -t ${REPO}:dev . --push
 
 .PHONY: docker-release-push
 docker-release-push:

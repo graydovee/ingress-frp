@@ -16,8 +16,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 	"strconv"
 	"strings"
 )
@@ -28,6 +31,14 @@ type FrpIngressReconciler struct {
 	clock.Clock
 
 	FrpSyncer frp.Syncer
+}
+
+func NewFrpIngressReconciler(client client.Client, scheme *runtime.Scheme, frpSyncer frp.Syncer) *FrpIngressReconciler {
+	return &FrpIngressReconciler{
+		Client:    client,
+		Scheme:    scheme,
+		FrpSyncer: frpSyncer,
+	}
 }
 
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
@@ -61,8 +72,8 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	for _, rule := range ingress.Spec.Rules {
 		for _, path := range rule.HTTP.Paths {
-			if path.PathType != nil && *path.PathType != networkingv1.PathTypePrefix {
-				l.Info("only support pathType: Prefix")
+			if path.PathType != nil && *path.PathType == networkingv1.PathTypeExact {
+				l.Info("not support pathType: Exact")
 				continue
 			}
 			if path.Backend.Service == nil {
@@ -79,7 +90,7 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				return ctrl.Result{Requeue: true}, err
 			}
 			switch svc.Spec.Type {
-			case corev1.ServiceTypeClusterIP:
+			case corev1.ServiceTypeClusterIP, corev1.ServiceTypeNodePort:
 				cfg := frp.HttpConfig{}
 				cfg.Host = rule.Host
 				cfg.LocalIp = svcToDomain(&svc)
@@ -153,6 +164,23 @@ func (r *FrpIngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		r.FrpSyncer = frp.NewFakeSyncer()
 	}
 
+	// UAPServic e
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &networkingv1.Ingress{}, constants.IndexIngressSecretName, func(object client.Object) []string {
+		ingress, ok := object.(*networkingv1.Ingress)
+		if !ok {
+			return []string{}
+		}
+
+		var index []string
+		for _, tls := range ingress.Spec.TLS {
+			index = append(index, tls.SecretName)
+		}
+
+		return index
+	}); err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{}, builder.WithPredicates(predicate.Funcs{
 			CreateFunc: func(event event.CreateEvent) bool {
@@ -188,10 +216,38 @@ func (r *FrpIngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return IngressMatch(ingress)
 			},
 		})).
+		Watches(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(r.secretMapFunc), builder.WithPredicates(predicate.Funcs{
+			DeleteFunc: func(event event.DeleteEvent) bool {
+				return true
+			},
+			CreateFunc: func(createEvent event.CreateEvent) bool {
+				return true
+			},
+			UpdateFunc: func(updateEvent event.UpdateEvent) bool {
+				return true
+			},
+			GenericFunc: func(genericEvent event.GenericEvent) bool {
+				return false
+			},
+		})).
 		Complete(r)
 }
 
+func (r *FrpIngressReconciler) secretMapFunc(object client.Object) []reconcile.Request {
+	var ingressList networkingv1.IngressList
+	if err := r.List(context.Background(), &ingressList, client.MatchingFields{constants.IndexIngressSecretName: object.GetName()}, client.InNamespace(object.GetNamespace())); client.IgnoreNotFound(err) != nil {
+		return nil
+	}
+
+	var reqs []reconcile.Request
+	for i := range ingressList.Items {
+		reqs = append(reqs, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&ingressList.Items[i])})
+	}
+	return reqs
+}
+
 type tlsCert struct {
+	secretUID string
 	crtBase64 string
 	keyBase64 string
 }
@@ -200,13 +256,15 @@ func (r *FrpIngressReconciler) loadTlsSecrets(ctx context.Context, ingress *netw
 	secrets := make(map[string]tlsCert)
 	for _, tls := range ingress.Spec.TLS {
 		secret := &corev1.Secret{}
-		if err := r.Get(ctx, types.NamespacedName{Name: tls.SecretName, Namespace: ingress.Namespace}, secret); err != nil {
+		key := types.NamespacedName{Name: tls.SecretName, Namespace: ingress.Namespace}
+		if err := r.Get(ctx, key, secret); err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
 			}
 			return nil, err
 		}
 		var t tlsCert
+		t.secretUID = string(secret.UID)
 		t.crtBase64 = base64.StdEncoding.EncodeToString(secret.Data["tls.crt"])
 		t.keyBase64 = base64.StdEncoding.EncodeToString(secret.Data["tls.key"])
 		for _, host := range tls.Hosts {
