@@ -21,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"strconv"
 	"strings"
 )
 
@@ -43,7 +42,8 @@ func NewFrpIngressReconciler(client client.Client, scheme *runtime.Scheme, frpSy
 
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=,resources=services,verbs=get
+//+kubebuilder:rbac:groups=,resources=services,verbs=get;list;watch
+//+kubebuilder:rbac:groups=,resources=pods,verbs=get;list;watch
 
 func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
@@ -92,9 +92,13 @@ func (r *FrpIngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			switch svc.Spec.Type {
 			case corev1.ServiceTypeClusterIP, corev1.ServiceTypeNodePort:
 				cfg := frp.HttpConfig{}
+				cfg.LocalPort, err = getIngressPort(&path, &svc)
+				if err != nil {
+					l.Error(err, "get ingress port error", "key", key)
+					continue
+				}
 				cfg.Host = rule.Host
 				cfg.LocalIp = svcToDomain(&svc)
-				cfg.LocalPort = strconv.Itoa(int(path.Backend.Service.Port.Number))
 				cfg.Locations = path.Path
 				name := fmt.Sprintf("%s/%s/%s", ingress.Namespace, ingress.Name, svc.Name)
 				if h, ok := ingress.Annotations[constants.AnnotationHostHeaderRewrite]; ok {
