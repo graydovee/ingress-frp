@@ -1,7 +1,7 @@
 
 # Image URL to use all building/pushing image targets
 ARCH ?= $(shell go env GOARCH)
-VERSION = v0.1.1
+VERSION = v0.1.2
 TAG ?= ${VERSION}
 REPO ?= graydovee/ingress-frp
 IMG ?= ${REPO}:${TAG}
